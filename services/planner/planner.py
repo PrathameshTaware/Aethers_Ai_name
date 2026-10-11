@@ -487,6 +487,16 @@ def plan_schedule(
     if exp_before_nom > 0:
         red_pct = round(((exp_before_nom - exp_after_nom) / exp_before_nom) * 100.0, 1)
 
+    # Without venue data the indoor dose is unknown, so claiming the full outdoor dose as averted would overstate it.
+    exposure_averted = None
+    if indoor_exposure is not None:
+        exposure_averted = {
+            "value": round(exp_before_nom - exp_after_nom - indoor_exposure),
+            "unit": "µg/m³·min",
+            "basis": "modelled: forecast outdoor PM2.5 x minutes before the plan, minus outdoor and modelled "
+                     "indoor PM2.5 x minutes after it, summed over all classes",
+        }
+
     return {
         "decision_id": decision_id,
         "declared_stage": declared_stage,
@@ -497,6 +507,7 @@ def plan_schedule(
         "exposure_after": exp_after_nom,
         "exposure_reduction_pct": red_pct,
         "plan_b_indoor_exposure_modelled": indoor_exposure,
+        "exposure_averted_modelled": exposure_averted,
         **pe_minutes_report(timetable, problematic_periods, plan_a_swaps, plan_b_fallbacks),
         "ruleset_version": ruleset.get("ruleset_version", "unknown"),
         "classified_periods": classified_periods,

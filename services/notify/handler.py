@@ -15,7 +15,6 @@ from typing import Dict, Any
 
 import boto3
 
-from services.audit.hash_chain import compute_payload_digest
 from services.audit.store import append_audit
 from services.common.http import ApiError, guarded, is_http_event, json_body, respond
 from services.notify.drafting import generate_parent_broadcast_package
@@ -26,8 +25,10 @@ logger.setLevel(logging.INFO)
 
 
 def _summary(package: Dict[str, Any]):
+    """Provenance per notice: which model or template wrote it, from which prompt, and the exact text's digest."""
     return [{"audience": n["audience"], "language": n["language"], "model_used": n["model_used"],
-             "fallback_used": n["fallback_used"], "text_sha256": compute_payload_digest(n["notice_text"])}
+             "fallback_used": n["fallback_used"], "model_id": n["model_id"], "template_id": n["template_id"],
+             "prompt_sha256": n["prompt_sha256"], "text_sha256": n["text_sha256"]}
             for n in (package["english"], package["hindi"], package["teacher"])]
 
 
@@ -45,7 +46,8 @@ def notify_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     table = boto3.resource("dynamodb").Table(os.environ["TABLE_NAME"])
     row = append_audit(table, tenant_id, "workflow:notify", "NOTICES_DRAFTED",
-                       {"decision_id": decision_id, "approval": event.get("approval"), "notices": notices},
+                       {"decision_id": decision_id, "approval": event.get("approval"), "notices": notices,
+                        "facts_given_to_writer": package["english"]["facts"]},
                        idempotency_key=f"{event['execution']}#NOTICES_DRAFTED" if event.get("execution") else None)
     logger.info("Notices drafted for %s (fallback used: %s)", decision_id,
                 [n["fallback_used"] for n in notices])

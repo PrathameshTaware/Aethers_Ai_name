@@ -39,6 +39,9 @@ class TestLambdaBundle(unittest.TestCase):
             self.assertTrue((self.bundle / rel).is_file(), rel)
 
     def test_every_template_handler_imports_from_bundle(self):
+        import boto3
+        # The Lambda runtime ships boto3; -I also hides user site-packages, where it may be installed locally.
+        runtime_libs = str(Path(boto3.__file__).resolve().parent.parent)
         handlers = template_handlers()
         self.assertGreaterEqual(len(handlers), 5)
         for handler in handlers:
@@ -46,6 +49,7 @@ class TestLambdaBundle(unittest.TestCase):
             code = (
                 "import sys, importlib;"
                 f"sys.path.insert(0, {str(self.bundle)!r});"
+                f"sys.path.append({runtime_libs!r});"
                 f"m = importlib.import_module({module!r});"
                 f"assert callable(getattr(m, {func!r}))"
             )

@@ -37,7 +37,7 @@ class TestAuditWiring(unittest.TestCase):
         os.environ.update(TABLE_NAME="SaansStateTable", ADMIN_API_KEY=ADMIN, AWS_LAMBDA_FUNCTION_NAME="local-test")
         self.addCleanup(os.environ.pop, "AWS_LAMBDA_FUNCTION_NAME", None)
         self.table = make_table()
-        self.bedrock = mock.patch.object(drafting, "_invoke_bedrock_nova", return_value=None)  # model unavailable
+        self.bedrock = mock.patch.object(drafting, "_invoke_bedrock", return_value=None)  # model unavailable
         self.bedrock.start()
         self.addCleanup(self.bedrock.stop)
 

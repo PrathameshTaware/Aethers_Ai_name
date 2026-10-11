@@ -3,8 +3,7 @@ hack_win M5: measured PE minutes, exact PE detection, notices that state only pl
 to our own receipt page.
 """
 
-import io
-import json
+import hashlib
 import sys
 import types
 import unittest
@@ -88,22 +87,29 @@ class TestNotices(unittest.TestCase):
     def test_model_prompt_states_only_plan_facts(self):
         captured = {}
 
+        text = "Dear parents, outdoor PE is replaced by indoor physical sessions today."
+
         class FakeClient:
-            def invoke_model(self, **kw):
-                captured["body"] = json.loads(kw["body"])
-                text = "Dear parents, outdoor PE is replaced by indoor physical sessions today."
-                return {"body": io.BytesIO(json.dumps({"output": {"message": {"content": [{"text": text}]}}}).encode())}
+            def converse(self, **kw):
+                captured.update(kw)
+                return {"output": {"message": {"content": [{"text": text}]}}}
 
         fake_boto3 = types.SimpleNamespace(client=lambda *a, **k: FakeClient())
         with mock.patch.dict(sys.modules, {"boto3": fake_boto3}):
             n = drafting.draft_notice(self.PLAN, receipt_id="AbCdEfGh1234", public_base_url="https://api.example/Prod")
-        prompt = captured["body"]["messages"][0]["content"][0]["text"]
+        prompt = captured["messages"][0]["content"][0]["text"]
+        self.assertEqual(captured["modelId"], drafting.BEDROCK_MODEL_ID)
         self.assertNotIn("100% of physical education", prompt)
         self.assertIn("6 outdoor activity periods were replaced", prompt)
         self.assertIn("240 of 240 scheduled PE minutes", prompt)
         self.assertIn("https://api.example/Prod/verify/AbCdEfGh1234", prompt)
         self.assertFalse(n["fallback_used"])
         self.assertEqual(n["facts"]["periods_replaced_indoor"], 6)
+        # Provenance: which model wrote it, from which exact prompt, and the exact text.
+        self.assertEqual(n["model_id"], drafting.BEDROCK_MODEL_ID)
+        self.assertIsNone(n["template_id"])
+        self.assertEqual(n["prompt_sha256"], hashlib.sha256(prompt.encode("utf-8")).hexdigest())
+        self.assertEqual(n["text_sha256"], hashlib.sha256(text.encode("utf-8")).hexdigest())
 
 
 class TestNoFabricatedScale(unittest.TestCase):

@@ -108,7 +108,7 @@ flowchart TD
         CK -- yes --> RP["RequestPrincipalApproval<br/>waitForTaskToken"]
         RP -- "timeout" --> VP["EscalateToVicePrincipal<br/>waitForTaskToken"]
         VP -- "timeout or reject" --> FS["Fail safe<br/>no broadcast"]
-        RP -- approved --> DN["DraftAndDispatchNotices<br/>Bedrock Nova Lite or static template"]
+        RP -- approved --> DN["DraftAndDispatchNotices<br/>Bedrock or static template<br/>model, prompt hash and text hash recorded"]
         VP -- approved --> DN
         DN --> ACA["Audit: closed, approved"]
     end
@@ -144,6 +144,7 @@ All 14 Lambda functions share one bundle built by `scripts/build_lambda.py`. The
 | **Runs happen once.** | The Step Functions execution name is the decision ID, so a second trigger for the same school, date and session is refused. |
 | **Every claim is checkable.** | Each audit row hashes the previous row's hash plus its own canonical JSON. Appends are conditional on the chain head. The verify page recomputes the chain in the browser with Web Crypto. |
 | **Fallbacks are labelled.** | If the live forecast fails, the replay scenario is used and marked `is_replay`. If Bedrock fails, the static template is used and the audit chain records it per notice. |
+| **The AI's words are on the record too.** | For every notice, the `NOTICES_DRAFTED` row records the model ID (or template ID), the SHA-256 of the exact prompt, the facts the writer was given, and the SHA-256 of the exact text. A parent can paste a WhatsApp notice into the receipt page and their browser checks it against the chain. |
 
 ## Rules come from the order, checked by code
 
@@ -162,7 +163,9 @@ What this measures today, from [data/gold/eval_table.json](data/gold/eval_table.
 | Accepted rules whose action is not supported by their quote | 2 of 3, listed as known gaps |
 
 Rules are entered by hand from the circular today. Model-based extraction with Amazon Bedrock is the next step. It is
-blocked because the AWS account is on the Free plan, where the Nova on-demand quota is zero.
+blocked because the demo AWS account is on the AWS Free plan, which cannot invoke Bedrock models. Every model we tried
+(Nova Lite and Micro, Claude Haiku 4.5, Llama 3.1, Mistral, gpt-oss, Qwen3) returns
+`ValidationException: Operation not allowed`.
 
 ## Notices
 
@@ -170,8 +173,17 @@ Approved plans produce teacher and parent notices in English and Hindi. Every fa
 approved plan. Indoor air figures are labelled as modelled. The teacher notice states how many classes had stricter
 limits. Notices are returned as WhatsApp click-to-share links. Nothing is pushed to phones automatically.
 
-Bedrock Nova Lite drafts the notices when it is available. Until then the static bilingual templates are used, and
-each audit row records which one wrote the text.
+Bedrock drafts the notices through the Converse API when it is available. Nova Lite is the default, and the
+`BedrockModelId` stack parameter switches to any other on-demand text model. When Bedrock is unavailable, as it is
+on the demo account today, the static bilingual templates are used. `/health` reports `bedrock.usable: false` and each
+audit row records which one wrote the text. Moving the account to a paid plan turns the model on with no code change.
+
+**Check a notice you received.** The `/verify/{id}` page has a box where anyone can paste a notice. The browser hashes
+it and finds the matching row, then shows which model or template wrote it. Changing a single character makes the check fail.
+
+Each plan also reports `exposure_averted_modelled`: outdoor PM2.5 × minutes before the plan, minus outdoor and modelled
+indoor PM2.5 × minutes after it. On the demo school this is about 51,000 µg/m³·min at Stage III. It is recorded in the
+`PLAN_GENERATED` audit row and shown on the receipt.
 
 ## Privacy and security
 
@@ -200,7 +212,8 @@ python run_all_tests.py           # full suite; AWS is mocked with moto
 
 The tests cover planner edge cases, the approval workflow paths through the real state machine definition, the
 hash chain under concurrent writers, the receipt verifier running the browser code under Node, forecast fallback and
-caching, the forecast watch, notice wording, and the Lambda bundle importing every handler.
+caching, the forecast watch, notice wording and provenance, the "check a notice" box, and the Lambda bundle importing
+every handler. 195 tests, all passing.
 
 ### Front end
 
@@ -224,7 +237,7 @@ aws cloudformation package --template-file infra/template.yaml \
 
 aws cloudformation deploy --template-file infra/packaged.yaml --stack-name saans \
     --region us-east-1 --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
-    --parameter-overrides AdminApiKey=<your-secret>
+    --parameter-overrides AdminApiKey=<your-secret>      # optional: BedrockModelId=<model-id>
 
 python scripts/seed_demo.py                            # reset the demo school and print the next commands
 ```
@@ -264,8 +277,10 @@ app/           Next.js dashboard prototype
 ## Known limitations
 
 - **The forecast is modelled.** It is CAMS data via Open-Meteo for one grid point, not a ground station reading.
-- **Rules are hand-entered** from one real circular. Bedrock extraction is built into the plan but blocked by the
-  account's quota.
+- **Rules are hand-entered** from one real circular. Bedrock extraction is built into the plan but blocked because
+  the account is on the AWS Free plan.
+- **Notices use the static template on the demo account** for the same reason. The fallback is labelled in `/health`
+  and in every `NOTICES_DRAFTED` row.
 - **Notices are drafted, not delivered.** Delivery is a manual WhatsApp share. There is no WhatsApp Business or SMS
   registration.
 - **Approvals happen through the brief page link.** There is no Telegram bot.

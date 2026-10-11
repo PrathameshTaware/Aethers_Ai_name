@@ -8,6 +8,10 @@ Parameters:
     NoEcho: true
     MinLength: 16
     Description: Secret for the x-saans-admin-key header on GET /decisions (returns approval links). Pass at deploy time; never commit.
+  BedrockModelId:
+    Type: String
+    Default: amazon.nova-lite-v1:0
+    Description: On-demand Bedrock text model that drafts notices and is probed by /health (e.g. anthropic.claude-3-haiku-20240307-v1:0).
 
 Globals:
   Function:
@@ -157,7 +161,7 @@ Resources:
       Description: GET /health - what works right now (ok / degraded / down)
       Environment:
         Variables:
-          BEDROCK_MODEL_ID: amazon.nova-lite-v1:0
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
       Policies:
         - DynamoDBCrudPolicy:  # reads chain/META; writes the forecast cache
             TableName: !Ref SaansTable
@@ -165,7 +169,7 @@ Resources:
             - Effect: Allow
               Action:
                 - bedrock:InvokeModel
-              Resource: !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/amazon.nova-lite-v1:0"
+              Resource: !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
       Events:
         HealthApi:
           Type: Api
@@ -201,9 +205,15 @@ Resources:
         Variables:
           # Notices link to this API's public receipt page: {PUBLIC_BASE_URL}/verify/{receipt_id}
           PUBLIC_BASE_URL: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref SaansTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
 
   # 7. Approval request step (waitForTaskToken target)
   RequestApprovalFunction:

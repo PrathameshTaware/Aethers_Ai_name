@@ -31,6 +31,13 @@
   details { margin-top:6px; font-size:13px; }
   button { font:inherit; padding:8px 14px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--fg); cursor:pointer; }
   .bar { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 16px; }
+  .check { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; margin:0 0 16px; }
+  .check h2 { font-size:15px; margin:0 0 4px; }
+  textarea { width:100%; min-height:90px; font:inherit; padding:8px; border-radius:8px; border:1px solid var(--line);
+             background:var(--bg); color:var(--fg); resize:vertical; }
+  .result { margin-top:8px; font-weight:600; }
+  .result.ok { color:var(--ok); } .result.bad { color:var(--bad); }
+  .prov { font-size:13px; margin-top:4px; }
 </style>
 </head>
 <body>
@@ -39,6 +46,12 @@
   <p class="muted">Your browser downloads the school's audit log and recomputes every SHA-256 hash itself. It does not trust the server's answer.</p>
   <div id="verdict" class="verdict" role="status">Checking…</div>
   <div class="meta" id="meta"></div>
+  <section class="check" aria-labelledby="check-title">
+    <h2 id="check-title">Check a notice you received</h2>
+    <p class="muted">Paste the WhatsApp message. Your browser hashes it and looks for that exact text in the school's log. Nothing is sent anywhere.</p>
+    <textarea id="notice" aria-label="Notice text" placeholder="Paste the notice here"></textarea>
+    <div id="noticeResult" class="result" role="status"></div>
+  </section>
   <div class="bar">
     <button id="tamper" type="button">Simulate tampering (local copy only)</button>
     <button id="reset" type="button" hidden>Re-check original</button>
@@ -99,6 +112,16 @@
       head.append(left, right); li.append(head);
       const h = document.createElement("div"); h.className = "mono"; h.textContent = "hash " + b.hash; li.append(h);
       outcome.results[i].forEach((p) => { const w = document.createElement("div"); w.className = "why"; w.textContent = "✕ " + p; li.append(w); });
+      if (b.eventType === "NOTICES_DRAFTED" && b.payloadJson) {
+        (JSON.parse(b.payloadJson).notices || []).forEach((n) => {
+          const p = document.createElement("div"); p.className = "prov";
+          p.textContent = n.language + " · " + n.audience + ": " + (n.fallback_used
+            ? "static template " + (n.template_id || "")
+            : "written by Bedrock " + n.model_id + " · prompt " + String(n.prompt_sha256).slice(0, 12) + "…")
+            + " · text " + String(n.text_sha256).slice(0, 12) + "…";
+          li.append(p);
+        });
+      }
       if (b.payloadJson) {
         const d = document.createElement("details"); const s = document.createElement("summary"); s.textContent = "What was recorded";
         const pre = document.createElement("pre"); pre.className = "mono"; pre.textContent = JSON.stringify(JSON.parse(b.payloadJson), null, 2);
@@ -110,17 +133,45 @@
     else setVerdict(false, "✕ Broken at record #" + outcome.firstBad + ": the log was changed after it was written.");
   }
 
+  const payloadOf = (b) => { try { return b.payloadJson ? JSON.parse(b.payloadJson) : null; } catch (e) { return null; } };
+  const planRow = original.find((b) => mine.has(b.sequence) && b.eventType === "PLAN_GENERATED");
+  const averted = planRow && (payloadOf(planRow) || {}).exposure_averted_modelled;
+
   const meta = $("meta");
   [["Receipt", receipt.receiptId], ["School", receipt.schoolId], ["Decision", receipt.decisionId],
    ["Status", receipt.decisionStatus || "—"], ["Head hash", receipt.auditHead],
-   ["Rows for this decision", (receipt.decisionSequences || []).join(", ") || "—"]].forEach(([k, v]) => {
+   ["Rows for this decision", (receipt.decisionSequences || []).join(", ") || "—"],
+   ...(averted ? [["Exposure averted", averted.value.toLocaleString("en-IN") + " " + averted.unit + " (modelled)"]] : [])
+  ].forEach(([k, v]) => {
     const a = document.createElement("span"); a.className = "muted"; a.textContent = k;
     const b = document.createElement("span"); b.className = "mono"; b.textContent = v;
     meta.append(a, b);
   });
   $("spec").textContent = "Method: " + receipt.hashing;
 
-  render(original, await verify(original));
+  const originalOutcome = await verify(original);
+  render(original, originalOutcome);
+
+  const recorded = [];
+  original.forEach((b) => {
+    if (b.eventType !== "NOTICES_DRAFTED") return;
+    ((payloadOf(b) || {}).notices || []).forEach((n) => recorded.push({ row: b, n }));
+  });
+  async function checkNotice() {
+    const out = $("noticeResult"), raw = $("notice").value;
+    if (!raw.trim()) { out.textContent = ""; out.className = "result"; return; }
+    // Copy-paste can change line endings, edge whitespace or Unicode form without changing the words.
+    const variants = new Set([raw, raw.trim(), raw.replace(/\r\n/g, "\n").trim(), raw.normalize("NFC").replace(/\r\n/g, "\n").trim()]);
+    const hashes = new Set(await Promise.all([...variants].map(sha256)));
+    const hit = recorded.find((r) => hashes.has(r.n.text_sha256));
+    if (!hit) { out.className = "result bad"; out.textContent = "✕ This exact text is not in the school's log. It may have been edited or did not come from this decision."; return; }
+    const n = hit.n, who = n.fallback_used ? "the school's static template" : "Bedrock " + n.model_id;
+    const chainOk = originalOutcome.firstBad === null;
+    out.className = "result " + (chainOk ? "ok" : "bad");
+    out.textContent = (chainOk ? "✓ Genuine: " : "⚠ Text matches, but the log itself is broken: ") + "this is the " + n.language + " " +
+      n.audience + " notice recorded in row #" + hit.row.sequence + ", written by " + who + ".";
+  }
+  $("notice").addEventListener("input", checkNotice);
 
   $("tamper").addEventListener("click", async () => {
     const copy = JSON.parse(JSON.stringify(original));

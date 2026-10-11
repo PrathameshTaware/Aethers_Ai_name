@@ -171,6 +171,7 @@ def run_planner(run: Dict[str, str], execution: str = "") -> Dict[str, Any]:
         "fallbacks_count": len(plan_result["plan_b"]),
         "exposure_before": plan_result["exposure_before"],
         "exposure_after": plan_result["exposure_after"],
+        "exposure_averted_modelled": plan_result.get("exposure_averted_modelled"),
         "pe_minutes_preserved": plan_result["pe_minutes_preserved"],
         "indoor_air_assumptions": _get_school_config()["indoor_air"]["infiltration"],
         # Policy only: per-class sensitive counts never enter the public audit chain.

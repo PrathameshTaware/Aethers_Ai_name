@@ -10,7 +10,7 @@ Every fact in a notice comes from the approved plan. The only link is our own re
 PUBLIC_BASE_URL or the receipt ID is missing, the notice simply has no link.
 """
 
-import json
+import hashlib
 import os
 import logging
 import re
@@ -19,8 +19,12 @@ from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
-BEDROCK_MODEL_ID = "amazon.nova-lite-v1:0"
+BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
 BEDROCK_REGION = os.environ.get("APP_REGION", "ap-south-1")
+
+
+def sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 STATIC_NOTICES = {
     "english": {
@@ -87,6 +91,7 @@ def plan_facts(plan: Dict[str, Any]) -> Dict[str, Any]:
     # flagged period in decision_trace[].sensitivity; it has no top-level "sensitivity" key.
     classes_with_stricter = len({t.get("class") for t in plan.get("decision_trace", []) if t.get("sensitivity")})
 
+    exposure = plan.get("exposure_averted_modelled") or {}
     return {
         "periods_moved": len(plan.get("plan_a", [])),
         "periods_replaced_indoor": len(plan.get("plan_b", [])),
@@ -95,74 +100,44 @@ def plan_facts(plan: Dict[str, Any]) -> Dict[str, Any]:
         "modelled_exposure_reduction_pct": plan.get("exposure_reduction_pct"),
         "indoor_air_reduction_pct_modelled": indoor_reduction,
         "classes_with_stricter_limits": classes_with_stricter,
+        "exposure_averted_ug_m3_min_modelled": exposure.get("value"),
     }
 
 
-def _invoke_bedrock_nova(
-    audience: str,
-    language: str,
-    stage: str,
-    plan_summary: Dict[str, Any],
-    link: Optional[str]
-) -> Optional[str]:
-    """
-    Attempts to invoke Amazon Bedrock (Nova Lite) to generate a context-aware safety notice.
-    Returns generated text on success, or None on any failure (triggering static fallback).
-    """
+def build_prompt(audience: str, language: str, stage: str, plan: Dict[str, Any], link: Optional[str]) -> str:
+    facts = plan_facts(plan)
+    lang_instruction = "in Hindi (Devanagari script)" if language == "hindi" else "in English"
+    audience_instruction = "parents of school children" if audience == "parents" else "PE and subject teachers"
+    return (
+        f"You are drafting an official school safety notice {lang_instruction} for {audience_instruction}.\n\n"
+        f"Facts (use only these):\n"
+        f"- GRAP Stage {stage} is in force in Delhi-NCR.\n"
+        f"- {facts['periods_moved']} outdoor activity periods were moved to times with lower forecast pollution.\n"
+        f"- {facts['periods_replaced_indoor']} outdoor activity periods were replaced by indoor physical sessions.\n"
+        f"- {facts['pe_minutes_kept_active']} of {facts['pe_minutes_scheduled']} scheduled PE minutes stay physically active.\n"
+        + (f"- Anyone can verify this decision at: {link}\n" if link else "")
+        + "\nWrite a concise, factual notice (max 3 sentences). Do not add any other numbers, regulations, "
+        "health claims or links."
+    )
+
+
+def _invoke_bedrock(prompt: str) -> Optional[str]:
+    """Returns the model's notice text, or None on any failure (triggering the static fallback)."""
     try:
         import boto3
 
         client = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
-
-        facts = plan_facts(plan_summary)
-        lang_instruction = "in Hindi (Devanagari script)" if language == "hindi" else "in English"
-        audience_instruction = "parents of school children" if audience == "parents" else "PE and subject teachers"
-
-        prompt = (
-            f"You are drafting an official school safety notice {lang_instruction} for {audience_instruction}.\n\n"
-            f"Facts (use only these):\n"
-            f"- GRAP Stage {stage} is in force in Delhi-NCR.\n"
-            f"- {facts['periods_moved']} outdoor activity periods were moved to times with lower forecast pollution.\n"
-            f"- {facts['periods_replaced_indoor']} outdoor activity periods were replaced by indoor physical sessions.\n"
-            f"- {facts['pe_minutes_kept_active']} of {facts['pe_minutes_scheduled']} scheduled PE minutes stay physically active.\n"
-            + (f"- Anyone can verify this decision at: {link}\n" if link else "")
-            + "\nWrite a concise, factual notice (max 3 sentences). Do not add any other numbers, regulations, "
-            "health claims or links."
-        )
-
-        # Nova Lite uses Converse API format
-        request_body = json.dumps({
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt
-                        }
-                    ]
-                }
-            ],
-            "inferenceConfig": {
-                "maxTokens": 300,
-                "temperature": 0.3,
-                "topP": 0.9
-            }
-        })
-
-        response = client.invoke_model(
+        # Converse has one request shape for Nova, Claude and the other Bedrock text models.
+        response = client.converse(
             modelId=BEDROCK_MODEL_ID,
-            contentType="application/json",
-            accept="application/json",
-            body=request_body
+            messages=[{"role": "user", "content": [{"text": prompt}]}],
+            inferenceConfig={"maxTokens": 300, "temperature": 0.3, "topP": 0.9},
         )
-
-        response_body = json.loads(response["body"].read())
-        # Extract text from Nova Lite response format
-        generated_text = response_body.get("output", {}).get("message", {}).get("content", [{}])[0].get("text", "").strip()
+        content = response.get("output", {}).get("message", {}).get("content") or [{}]
+        generated_text = content[0].get("text", "").strip()
 
         if generated_text and len(generated_text) > 20:
-            logger.info("Bedrock Nova Lite generated notice successfully (len=%d)", len(generated_text))
+            logger.info("Bedrock %s generated notice successfully (len=%d)", BEDROCK_MODEL_ID, len(generated_text))
             return generated_text
         else:
             logger.warning("Bedrock returned empty or too-short response; falling back to static template")
@@ -199,29 +174,24 @@ def draft_notice(
         m = re.search(r"#(\d{4}-\d{2}-\d{2})#", plan.get("decision_id", ""))
         date_str = m.group(1) if m else "today"
     has_swaps = len(plan.get("plan_a", [])) > 0
-    fallback_used = force_fallback
     model_used = "STATIC_TEMPLATE_FALLBACK"
     notice_text = None
+    prompt_sha256 = None
+    template_id = None
 
     # 1. Attempt Bedrock generation (unless force_fallback is set)
     if not force_fallback:
-        bedrock_result = _invoke_bedrock_nova(
-            audience=audience,
-            language=language,
-            stage=stage,
-            plan_summary=plan,
-            link=link
-        )
+        prompt = build_prompt(audience, language, stage, plan, link)
+        bedrock_result = _invoke_bedrock(prompt)
         if bedrock_result:
             notice_text = bedrock_result
             model_used = f"Bedrock-{BEDROCK_MODEL_ID}"
-            fallback_used = False
+            prompt_sha256 = sha256_text(prompt)
 
     # 2. Static template fallback (circuit breaker)
     facts = plan_facts(plan)
-    if notice_text is None:
-        fallback_used = True
-        model_used = "STATIC_TEMPLATE_FALLBACK"
+    fallback_used = notice_text is None
+    if fallback_used:
         lang_dict = STATIC_NOTICES.get(language, STATIC_NOTICES["english"])
         verify_line = lang_dict["verify_line"].format(url=link) if link else ""
 
@@ -231,11 +201,12 @@ def draft_notice(
         teacher_sentence = (lang_dict["teacher_sentence"].format(count=count)) if count > 0 else ""
 
         if audience == "parents":
-            template = lang_dict["parents_plan_a"] if has_swaps else lang_dict["parents_plan_b"]
-            notice_text = template.format(stage=stage, indoor_sentence=indoor_sentence, verify_line=verify_line)
+            key = "parents_plan_a" if has_swaps else "parents_plan_b"
+            notice_text = lang_dict[key].format(stage=stage, indoor_sentence=indoor_sentence, verify_line=verify_line)
         else:
-            template = lang_dict["teachers"]
-            notice_text = template.format(stage=stage, date=date_str, teacher_sentence=teacher_sentence, verify_line=verify_line)
+            key = "teachers"
+            notice_text = lang_dict[key].format(stage=stage, date=date_str, teacher_sentence=teacher_sentence, verify_line=verify_line)
+        template_id = f"static:{language if language in STATIC_NOTICES else 'english'}:{key}"
 
     # Build WhatsApp Click-to-Share link
     encoded_text = urllib.parse.quote(notice_text)
@@ -247,9 +218,13 @@ def draft_notice(
         "notice_text": notice_text,
         "whatsapp_click_to_share_url": whatsapp_share_url,
         "verify_url": link,
-        "facts": plan_facts(plan),
+        "facts": facts,
         "model_used": model_used,
-        "fallback_used": fallback_used
+        "fallback_used": fallback_used,
+        "model_id": None if fallback_used else BEDROCK_MODEL_ID,
+        "template_id": template_id,
+        "prompt_sha256": prompt_sha256,
+        "text_sha256": sha256_text(notice_text),
     }
 
 

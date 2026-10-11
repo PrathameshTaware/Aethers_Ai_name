@@ -4,6 +4,7 @@ the frontend's lib/crypto.ts and the backend-served verify page's own <script> l
 under Node against a chain written by the backend.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -12,6 +13,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 os.environ.setdefault("AWS_DEFAULT_REGION", "ap-south-1")
 os.environ.setdefault("AWS_ACCESS_KEY_ID", "testing")
@@ -20,6 +22,7 @@ os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "testing")
 from moto import mock_aws  # noqa: E402
 
 from services.audit.handler import receipt_handler, verify_page_handler  # noqa: E402
+import services.notify.handler as notify_mod  # noqa: E402
 import tests.test_audit_wiring as wiring  # noqa: E402  (module import: avoid re-discovering its tests)
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -37,7 +40,13 @@ class TestReceipts(wiring.TestAuditWiring):
 
     def setUp(self):
         super().setUp()
-        self.run_workflow("APPROVE_PLAN_B")
+        real, self.packages = notify_mod.generate_parent_broadcast_package, []
+
+        def capture(*a, **k):  # keep the exact notices the workflow drafted
+            self.packages.append(real(*a, **k))
+            return self.packages[-1]
+        with mock.patch.object(notify_mod, "generate_parent_broadcast_package", capture):
+            self.run_workflow("APPROVE_PLAN_B")
         self.receipt_id = self.table.get_item(Key={"PK": "TENANT#demo", "SK": "DEC#2026-10-12#MORN"})["Item"]["receipt_id"]
 
     def receipt(self):
@@ -130,17 +139,40 @@ const settle = () => new Promise(r => setTimeout(r, 200));
   %SCRIPT%
   await settle(); const clean = els.verdict.textContent;
   await els.tamper.onclick(); await settle(); const tampered = els.verdict.textContent;
-  console.log(JSON.stringify({ clean, tampered }));
+  const notice = process.env.NOTICE;
+  els.notice.value = "  " + notice.replace(/\\n/g, "\\r\\n") + "\\n"; await els.notice.onclick(); const genuine = els.noticeResult.textContent;
+  els.notice.value = notice.replace("III", "II"); await els.notice.onclick(); const edited = els.noticeResult.textContent;
+  console.log(JSON.stringify({ clean, tampered, genuine, edited }));
 })();
 """.replace("%SCRIPT%", script)
+        notice = self.packages[0]["english"]["notice_text"]
         with tempfile.TemporaryDirectory() as tmp:
             Path(tmp, "page.mjs").write_text(harness, encoding="utf-8")
             out = subprocess.run([NODE, "page.mjs"], cwd=tmp, capture_output=True, text=True, encoding="utf-8", timeout=60,
-                                 env={**os.environ, "RECEIPT": json.dumps(receipt)})
+                                 env={**os.environ, "RECEIPT": json.dumps(receipt), "NOTICE": notice})
         self.assertEqual(out.returncode, 0, out.stderr)
         result = json.loads(out.stdout.strip().splitlines()[-1])
         self.assertTrue(result["clean"].startswith("✓ Valid: all 5 records"), result)
         self.assertTrue(result["tampered"].startswith("✕ Broken at record #3"), result)
+        # A pasted notice is found in the chain despite edge whitespace and CRLF; one edited character is not.
+        self.assertTrue(result["genuine"].startswith("✓ Genuine: this is the english parents notice recorded in row #4"),
+                        result)
+        self.assertIn("static template", result["genuine"])
+        self.assertTrue(result["edited"].startswith("✕ This exact text is not in the school's log"), result)
+
+    def test_notice_row_records_provenance_and_plan_records_exposure_averted(self):
+        blocks = self.receipt()["blocks"]
+        plan = json.loads(blocks[0]["payloadJson"])
+        notices = json.loads(blocks[3]["payloadJson"])
+        averted = plan["exposure_averted_modelled"]
+        self.assertGreater(averted["value"], 0)
+        self.assertIn("modelled", averted["basis"])
+        english = self.packages[0]["english"]
+        rec = next(n for n in notices["notices"] if n["language"] == "english" and n["audience"] == "parents")
+        self.assertEqual(rec["text_sha256"], hashlib.sha256(english["notice_text"].encode("utf-8")).hexdigest())
+        self.assertEqual((rec["model_id"], rec["prompt_sha256"]), (None, None))  # fallback: no model, no prompt
+        self.assertTrue(rec["template_id"].startswith("static:english:parents_plan"))
+        self.assertEqual(notices["facts_given_to_writer"]["exposure_averted_ug_m3_min_modelled"], averted["value"])
 
 
 # Don't re-run the inherited wiring tests under this class.
