@@ -487,7 +487,11 @@ function Notices({ notices, receiptId }: { notices: NonNullable<Decision['notice
           </div>
           <p className="text-[15px]">
             <span className="chip mr-2">{notice.fallback_used ? notice.template_id : notice.model_id}</span>
-            {notice.fallback_used ? t('provenance') : `Written by Bedrock ${notice.model_id}`}
+            {!notice.fallback_used
+              ? t(notice.model_provider === 'fallback' ? 'provenanceFallbackModel' : 'provenanceModel', { model: notice.model_id ?? '' })
+              : notice.fallback_reason === 'output_rejected'
+                ? t('provenanceRejected', { reasons: (notice.rejected_reasons ?? []).join(', ') })
+                : t('provenance')}
           </p>
           <div className="flex flex-wrap gap-3">
             <a className="btn btn-act" href={notice.whatsapp_click_to_share_url} target="_blank" rel="noreferrer">

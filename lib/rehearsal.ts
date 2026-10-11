@@ -27,6 +27,8 @@ export function useRehearsal() {
     queryFn: ({ signal }) => api.rehearse(code, signal),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60_000,
+    // On the labelled snapshot (the API was unreachable), keep trying quietly and switch back to live.
+    refetchInterval: (q) => (q.state.data?.origin === 'snapshot' ? 20_000 : false),
   });
 
   // Held back until mount so the first client render matches the prerendered HTML.

@@ -201,10 +201,16 @@ export interface NoticeProvenance {
   language: string;
   model_used?: string;
   fallback_used: boolean;
-  fallback_reason?: string | null;
+  /** 'output_rejected' when code refused the model's draft, 'model_unavailable' when Bedrock did not answer. */
+  fallback_reason?: 'output_rejected' | 'model_unavailable' | 'forced' | string | null;
+  /** Why code refused the model's draft, e.g. 'invented_number:450'. */
+  rejected_reasons?: string[];
   model_id: string | null;
+  /** 'bedrock' (primary) or 'fallback' (only when Bedrock failed); null when the static template wrote it. */
+  model_provider?: 'bedrock' | 'fallback' | null;
   template_id: string | null;
   prompt_sha256: string | null;
+  prompt_template_id?: string | null;
   text_sha256: string;
 }
 

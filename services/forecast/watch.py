@@ -18,6 +18,7 @@ import boto3
 
 from services.audit.store import append_audit
 from services.forecast.ingest import get_forecast
+from services.circular.store import load_active_ruleset
 from services.planner.handler import _get_demo_fixtures, _get_school_config
 from services.planner.planner import plan_schedule
 
@@ -72,6 +73,8 @@ def run_watch(table=None,
 
     school_days = next_school_days(today_date, count=2)
     timetable, _, ruleset = _get_demo_fixtures()
+    if table is not None:
+        ruleset, _ = load_active_ruleset(table, t_key)
     school_cfg = _get_school_config()
 
     # Determine stage from tenant record (no guessing)

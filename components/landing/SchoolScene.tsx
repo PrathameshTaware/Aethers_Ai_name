@@ -56,9 +56,13 @@ export function SchoolScene({ stage, outdoorClasses, className }: SchoolScenePro
     };
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Full resolution to start; the loop lowers it only if this machine cannot keep up (see `adapt`).
+    let pixelRatio = Math.min(window.devicePixelRatio, 2);
+    renderer.setPixelRatio(pixelRatio);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
+    // Everything but the children is static, and their hop is small: shadows refresh every other frame.
+    renderer.shadowMap.autoUpdate = false;
     renderer.domElement.style.display = 'block';
     el.appendChild(renderer.domElement);
 
@@ -246,17 +250,24 @@ export function SchoolScene({ stage, outdoorClasses, className }: SchoolScenePro
     scene.add(smog);
 
     // ── Sizing, pointer, visibility ─────────────────────────
+    // The handler only records the position. Reading the canvas rect here forced a layout on every mouse move;
+    // the frame reads it once instead, and only after a scroll or resize could have moved it.
     const pointer = { x: 0, y: 0 };
+    const client = { x: -1, y: -1 };
+    let rect = el.getBoundingClientRect();
+    let rectStale = false;
     const onPointer = (e: PointerEvent) => {
-      const r = el.getBoundingClientRect();
-      pointer.x = ((e.clientX - r.left) / r.width - 0.5) * 2;
-      pointer.y = ((e.clientY - r.top) / r.height - 0.5) * 2;
+      client.x = e.clientX;
+      client.y = e.clientY;
     };
+    const onScroll = () => { rectStale = true; };
     window.addEventListener('pointermove', onPointer, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
 
     const resize = () => {
       const { clientWidth: w, clientHeight: h } = el;
       if (!w || !h) return;
+      rectStale = true;
       renderer.setSize(w, h, false);
       renderer.domElement.style.width = '100%';
       renderer.domElement.style.height = '100%';
@@ -280,15 +291,49 @@ export function SchoolScene({ stage, outdoorClasses, className }: SchoolScenePro
     let orbitX = 0;
     let orbitY = 0;
     let raf = 0;
+    let frameNo = 0;
     const tmp = new THREE.Vector3();
+
+    // Adaptive resolution: if frames average over ~24 ms (below ~40 fps) for a second, render at a lower
+    // pixel ratio, down to 1. Machines that keep up never change; it never goes back up, so it cannot oscillate.
+    let slowFrames = 0;
+    let sampled = 0;
+    const adapt = (frameMs: number) => {
+      if (pixelRatio <= 1) return;
+      sampled++;
+      if (frameMs > 24) slowFrames++;
+      if (sampled < 60) return;
+      if (slowFrames > 40) {
+        pixelRatio = Math.max(1, pixelRatio - 0.25);
+        renderer.setPixelRatio(pixelRatio);
+        resize();
+      }
+      sampled = 0;
+      slowFrames = 0;
+    };
 
     const frame = () => {
       raf = requestAnimationFrame(frame);
-      if (!visible || document.hidden) return;
+      if (!visible || document.hidden) {
+        last = performance.now(); // resume without a jump, and without counting the pause as a slow frame
+        return;
+      }
       const now = performance.now();
-      const dt = Math.min((now - last) / 1000, 0.05);
+      const frameMs = now - last;
+      const dt = Math.min(frameMs / 1000, 0.05);
       last = now;
       t += dt;
+      frameNo++;
+      if (frameNo > 30) adapt(frameMs); // skip start-up frames (shader compilation)
+
+      if (client.x >= 0) {
+        if (rectStale) {
+          rect = el.getBoundingClientRect();
+          rectStale = false;
+        }
+        pointer.x = ((client.x - rect.left) / rect.width - 0.5) * 2;
+        pointer.y = ((client.y - rect.top) / rect.height - 0.5) * 2;
+      }
       const ease = reduceMotion ? 1 : 1 - Math.exp(-dt * 2.6);
 
       haze += (live.current.haze - haze) * ease;
@@ -319,14 +364,14 @@ export function SchoolScene({ stage, outdoorClasses, className }: SchoolScenePro
       }
 
       if (!reduceMotion) {
-        const pos = smogGeo.attributes.position as THREE.BufferAttribute;
-        for (let i = 0; i < SMOG; i++) {
-          let x = pos.getX(i) + dt * (0.25 + (smogSeed[i] % 1) * 0.3);
+        // Same drift as before, written straight into the typed array.
+        for (let i = 0, j = 0; i < SMOG; i++, j += 3) {
+          let x = smogPos[j] + dt * (0.25 + (smogSeed[i] % 1) * 0.3);
           if (x > 9) x = -9;
-          pos.setX(i, x);
-          pos.setY(i, pos.getY(i) + Math.sin(t * 0.6 + smogSeed[i]) * dt * 0.08);
+          smogPos[j] = x;
+          smogPos[j + 1] += Math.sin(t * 0.6 + smogSeed[i]) * dt * 0.08;
         }
-        pos.needsUpdate = true;
+        (smogGeo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
         flag.rotation.y = Math.sin(t * 2.4) * 0.18;
         orbitX += (pointer.x - orbitX) * 0.04;
         orbitY += (pointer.y - orbitY) * 0.04;
@@ -336,6 +381,7 @@ export function SchoolScene({ stage, outdoorClasses, className }: SchoolScenePro
       const radius = 31;
       camera.position.set(Math.sin(angle) * radius, 17 - orbitY * 1.8, Math.cos(angle) * radius);
       camera.lookAt(target);
+      if (frameNo % 2 === 1 || reduceMotion) renderer.shadowMap.needsUpdate = true;
       renderer.render(scene, camera);
     };
     frame();
@@ -345,6 +391,7 @@ export function SchoolScene({ stage, outdoorClasses, className }: SchoolScenePro
       ro.disconnect();
       io.disconnect();
       window.removeEventListener('pointermove', onPointer);
+      window.removeEventListener('scroll', onScroll);
       scene.traverse((o) => {
         const mesh = o as THREE.Mesh;
         mesh.geometry?.dispose();

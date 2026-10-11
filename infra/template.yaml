@@ -12,6 +12,29 @@ Parameters:
     Type: String
     Default: amazon.nova-lite-v1:0
     Description: On-demand Bedrock text model that drafts notices and is probed by /health (e.g. anthropic.claude-3-haiku-20240307-v1:0).
+  FallbackModelApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Optional key for the fallback model (Groq), used only when Bedrock fails and always labelled model_provider=fallback. Empty disables it.
+  TwilioAccountSid:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Optional. Twilio WhatsApp sandbox for demo delivery of approved parent notices. Empty disables it.
+  TwilioAuthToken:
+    Type: String
+    NoEcho: true
+    Default: ""
+  TwilioWhatsAppFrom:
+    Type: String
+    Default: "whatsapp:+14155238886"
+    Description: The Twilio WhatsApp sandbox sender.
+  DemoWhatsAppTo:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Comma-separated demo phones that joined the sandbox. Never stored or audited.
 
 Globals:
   Function:
@@ -89,6 +112,9 @@ Resources:
       CodeUri: .lambda_src/
       Handler: services.planner.handler.rehearse_handler
       Description: Instant re-plan simulator for Stage I-IV rehearsal slider
+      Policies:
+        - DynamoDBReadPolicy:  # the approved ruleset
+            TableName: !Ref SaansTable
       Events:
         RehearseApi:
           Type: Api
@@ -162,6 +188,7 @@ Resources:
       Environment:
         Variables:
           BEDROCK_MODEL_ID: !Ref BedrockModelId
+          FALLBACK_MODEL_API_KEY: !Ref FallbackModelApiKey
       Policies:
         - DynamoDBCrudPolicy:  # reads chain/META; writes the forecast cache
             TableName: !Ref SaansTable
@@ -194,6 +221,48 @@ Resources:
             Path: /forecast
             Method: get
 
+  # 5e. Circular reader: Bedrock proposes rules, code validates, a person approves the ruleset diff
+  CircularFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .lambda_src/
+      Handler: services.circular.handler.circular_handler
+      Description: GET/POST /circulars, POST /rulesets/{candidateId}/approve, GET /rulesets/active
+      Environment:
+        Variables:
+          ADMIN_API_KEY: !Ref AdminApiKey
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          FALLBACK_MODEL_API_KEY: !Ref FallbackModelApiKey
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SaansTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+      Events:
+        CircularPage:
+          Type: Api
+          Properties:
+            Path: /circulars
+            Method: get
+        CircularRead:
+          Type: Api
+          Properties:
+            Path: /circulars
+            Method: post
+        RulesetApprove:
+          Type: Api
+          Properties:
+            Path: /rulesets/{candidateId}/approve
+            Method: post
+        RulesetActive:
+          Type: Api
+          Properties:
+            Path: /rulesets/active
+            Method: get
+
   # 6. Bilingual Notification & WhatsApp Dispatch Function
   NotificationFunction:
     Type: AWS::Serverless::Function
@@ -206,6 +275,11 @@ Resources:
           # Notices link to this API's public receipt page: {PUBLIC_BASE_URL}/verify/{receipt_id}
           PUBLIC_BASE_URL: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
           BEDROCK_MODEL_ID: !Ref BedrockModelId
+          FALLBACK_MODEL_API_KEY: !Ref FallbackModelApiKey
+          TWILIO_ACCOUNT_SID: !Ref TwilioAccountSid
+          TWILIO_AUTH_TOKEN: !Ref TwilioAuthToken
+          TWILIO_WHATSAPP_FROM: !Ref TwilioWhatsAppFrom
+          DEMO_WHATSAPP_TO: !Ref DemoWhatsAppTo
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref SaansTable
@@ -358,17 +432,21 @@ Resources:
       Environment:
         Variables:
           ADMIN_API_KEY: !Ref AdminApiKey
-          STATE_MACHINE_ARN: !Ref SaansWorkflow
+          # By name, not !Ref: this function is behind the API, so referencing the workflow creates the same
+          # cycle as ApprovalFunction (API -> this -> workflow -> notify -> API, notify links to the receipt page).
+          STATE_MACHINE_ARN: !Sub "arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:SaansWorkflow-${AWS::StackName}"
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref SaansTable
-        - StepFunctionsExecutionPolicy:
-            StateMachineName: !GetAtt SaansWorkflow.Name
         - Statement:
             - Effect: Allow
               Action:
+                - states:StartExecution
+              Resource: !Sub "arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:SaansWorkflow-${AWS::StackName}"
+            - Effect: Allow
+              Action:
                 - states:DescribeExecution
-              Resource: !Sub "arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:execution:${SaansWorkflow.Name}:*"
+              Resource: !Sub "arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:execution:SaansWorkflow-${AWS::StackName}:*"
       Events:
         RunsApi:
           Type: Api

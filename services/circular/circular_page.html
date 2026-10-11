@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saans Circular Reader</title>
+<style>
+  :root { --bg:#f7f7f5; --fg:#1d1d1b; --muted:#6b6b66; --card:#ffffff; --line:#e3e3de;
+          --ok:#1f7a4d; --ok-bg:#e6f4ec; --bad:#b42318; --bad-bg:#fdecea; --wait:#8a6d00; --wait-bg:#fff6d6; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#151514; --fg:#ededea; --muted:#a3a39c; --card:#1f1f1d; --line:#33332f;
+            --ok:#5cc38f; --ok-bg:#163325; --bad:#ff8a7f; --bad-bg:#3a1714; --wait:#e8c75a; --wait-bg:#3a3317; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width:960px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  h2 { font-size:16px; margin:24px 0 8px; }
+  .muted { color:var(--muted); font-size:13px; }
+  .mono { font-family:ui-monospace, SFMono-Regular, Consolas, monospace; font-size:12px; overflow-wrap:anywhere; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; }
+  button, input { font:inherit; padding:8px 12px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--fg); }
+  button { cursor:pointer; } button.primary { background:var(--fg); color:var(--bg); border-color:var(--fg); }
+  button:disabled { opacity:.5; cursor:default; }
+  .bar { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0; align-items:center; }
+  .bar input { flex:1 1 200px; min-width:0; }
+  textarea { width:100%; min-height:200px; font:13px/1.5 ui-monospace, Consolas, monospace; padding:8px; border-radius:8px;
+             border:1px solid var(--line); background:var(--card); color:var(--fg); resize:vertical; }
+  .steps { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:8px; }
+  .step { border-left:4px solid var(--line); }
+  .step.ok { border-left-color:var(--ok); } .step.bad { border-left-color:var(--bad); } .step.wait { border-left-color:var(--wait); }
+  .step b { display:block; } .step .who { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .layout { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:760px) { .layout { grid-template-columns:1fr; } }
+  pre.circ { white-space:pre-wrap; margin:0; font:13px/1.6 ui-monospace, Consolas, monospace; }
+  mark.ok { background:var(--ok-bg); color:var(--ok); } mark.bad { background:var(--bad-bg); color:var(--bad); }
+  .rule { border-left:4px solid var(--ok); margin-bottom:8px; }
+  .rule.bad { border-left-color:var(--bad); }
+  .rule .head { font-weight:600; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .why { color:var(--bad); font-size:13px; margin-top:4px; }
+  .quote { font-style:italic; font-size:13px; margin-top:4px; }
+  .verdict { padding:12px; border-radius:10px; font-weight:600; margin:12px 0; }
+  .verdict.ok { background:var(--ok-bg); color:var(--ok); } .verdict.bad { background:var(--bad-bg); color:var(--bad); }
+  .verdict.wait { background:var(--wait-bg); color:var(--wait); }
+  ul.diff { margin:4px 0; padding-left:20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Read a circular</h1>
+  <p class="muted">The model proposes rules. Code checks every one against the circular's own words. A person approves the change.
+     Every step is written to the school's audit chain.</p>
+
+  <div class="bar" id="samples" aria-label="Sample circulars"></div>
+  <textarea id="text" aria-label="Circular text" placeholder="Paste a GRAP circular here"></textarea>
+  <div class="bar">
+    <input id="source" aria-label="Source ID" placeholder="Source ID, e.g. DoE-circular-40">
+    <input id="key" type="password" aria-label="Admin key" placeholder="Admin key" autocomplete="off">
+    <button id="run" class="primary" type="button">Read circular</button>
+  </div>
+
+  <div id="verdict" class="verdict" role="status" hidden></div>
+  <div class="steps" id="steps"></div>
+
+  <div class="layout" id="out" hidden>
+    <section>
+      <h2>The circular, as the code checked it</h2>
+      <div class="card"><pre class="circ" id="circ"></pre></div>
+    </section>
+    <section>
+      <h2>Rules the model proposed</h2>
+      <div id="rules"></div>
+      <h2>Change to the active ruleset</h2>
+      <div class="card" id="diff"></div>
+      <div class="bar"><button id="approve" class="primary" type="button" hidden>Approve this change</button></div>
+      <div id="approved" class="verdict ok" role="status" hidden></div>
+    </section>
+  </div>
+  <p class="muted" id="prov"></p>
+</main>
+<script>
+(() => {
+  const SAMPLES = /*SAMPLES*/[];
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  let candidateId = null;
+
+  SAMPLES.forEach((s) => {
+    const b = el("button", "", s.label); b.type = "button";
+    b.addEventListener("click", () => { $("text").value = s.text; $("source").value = s.source_id; });
+    $("samples").append(b);
+  });
+
+  function verdict(kind, text) { const v = $("verdict"); v.hidden = false; v.className = "verdict " + kind; v.textContent = text; }
+
+  function step(state, who, title, detail) {
+    const c = el("div", "card step " + state);
+    c.append(el("span", "who", who), el("b", "", title));
+    if (detail) c.append(el("span", "muted", detail));
+    $("steps").append(c);
+  }
+
+  const describe = (r) => {
+    const a = Object.entries(r.action || {}).map(([k, v]) => k + ": " + v).join(", ") || "no action";
+    const stage = (r.condition || {}).stage_at_least;
+    return (stage ? "Stage " + stage + "+ · " : "") + (r.class_band || []).join(", ") + " · " + a;
+  };
+
+  // Mark each quote where it appears in the circular (whitespace-insensitive, like the validator).
+  function renderCircular(text, candidates) {
+    const marks = [];
+    candidates.forEach((c) => {
+      const words = (c.rule.source_quote || "").trim().split(/\s+/).filter(Boolean)
+        .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+      if (!words.length) return;
+      const m = new RegExp(words.join("\\s+")).exec(text);
+      if (m) marks.push({ start: m.index, end: m.index + m[0].length, ok: c.verdict === "accepted" });
+    });
+    marks.sort((a, b) => a.start - b.start);
+    const pre = $("circ"); pre.replaceChildren();
+    let at = 0;
+    marks.forEach((m) => {
+      if (m.start < at) return;
+      pre.append(document.createTextNode(text.slice(at, m.start)), el("mark", m.ok ? "ok" : "bad", text.slice(m.start, m.end)));
+      at = m.end;
+    });
+    pre.append(document.createTextNode(text.slice(at)));
+  }
+
+  function render(res, text) {
+    const s = res.steps || {};
+    $("steps").replaceChildren();
+    const screen = s.injection_screen || {};
+    step(screen.ok ? "ok" : "bad", "1 · code", "Injection screen", screen.ok ? "No override instructions found." : screen.reason);
+    if (screen.ok) {
+      const ex = s.extraction || {}, m = res.model || {};
+      step(ex.ok ? "ok" : "bad", "2 · model",
+           m.model_provider === "fallback" ? "Fallback model reads the circular (Bedrock unavailable)" : "Bedrock reads the circular",
+           ex.ok ? (m.model_id + " · " + ex.rules_proposed + " rules · " + (m.latency_ms / 1000).toFixed(1) + " s")
+                 : "Model unavailable (" + ex.error + "). Nothing changes.");
+      if (s.validation) step(s.validation.rejected ? "wait" : "ok", "3 · code", "Checks every rule",
+                             s.validation.accepted + " accepted · " + s.validation.rejected + " refused");
+      step(res.status === "proposed" ? "wait" : "ok", "4 · person", "Approval",
+           res.status === "proposed" ? "Waiting for a person to approve." : "Nothing to approve.");
+    }
+    $("prov").textContent = res.model ? "Prompt " + res.model.prompt_template_id + " · sha256 " + String(res.model.prompt_sha256).slice(0, 16) +
+      "… · reply sha256 " + String(res.model.reply_sha256).slice(0, 16) + "… · circular sha256 " + res.circular_sha256.slice(0, 16) +
+      "… · audit row #" + res.audit_seq : "";
+
+    const messages = {
+      refused: ["bad", "Refused before the model saw it: the circular contains an instruction to override the system."],
+      model_unavailable: ["bad", "The model could not be reached. Nothing was changed."],
+      unparseable_reply: ["bad", "The model's reply was not the JSON asked for. Nothing was changed."],
+      nothing_accepted: ["bad", "Every proposed rule was refused by the code. Nothing was changed."],
+      no_changes: ["ok", "Every accepted rule is already in the active ruleset. Nothing to approve."],
+      proposed: ["wait", "A change is ready for approval."],
+    };
+    const [kind, msg] = messages[res.status] || ["bad", res.status];
+    verdict(kind, msg);
+
+    $("out").hidden = !screen.ok;
+    renderCircular(text, res.candidates || []);
+    const list = $("rules"); list.replaceChildren();
+    if (!(res.candidates || []).length) list.append(el("p", "muted", "No rules proposed."));
+    (res.candidates || []).forEach((c) => {
+      const card = el("div", "card rule" + (c.verdict === "accepted" ? "" : " bad"));
+      const head = el("div", "head");
+      head.append(el("span", "", (c.verdict === "accepted" ? "✓ " : "✕ ") + c.rule.rule_id),
+                  el("span", "muted", c.matches_active_rule ? "matches an active rule" : "new rule"));
+      card.append(head, el("div", "", describe(c.rule)), el("div", "quote", "“" + c.rule.source_quote + "”"));
+      c.reasons.forEach((r) => card.append(el("div", "why", r)));
+      list.append(card);
+    });
+
+    const d = res.diff, box = $("diff"); box.replaceChildren();
+    if (!d || !d.has_changes) box.append(el("span", "muted", "No change."));
+    else {
+      const ul = el("ul", "diff");
+      d.added_rules.forEach((r) => ul.append(el("li", "", "Add " + r.rule_id + ": " + describe(r.rule))));
+      d.changed_rules.forEach((r) => ul.append(el("li", "", "Change " + r.rule_id + ": " + describe(r.before) + " → " + describe(r.after))));
+      box.append(el("div", "mono", d.active_version + " → " + d.candidate_version), ul);
+    }
+    candidateId = res.candidate_id;
+    $("approve").hidden = !candidateId; $("approve").disabled = false; $("approved").hidden = true;
+  }
+
+  async function post(path, body) {
+    const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json", "x-saans-admin-key": $("key").value },
+                                    body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) throw new Error((data.error && data.error.message) || res.statusText);
+    return data;
+  }
+
+  $("run").addEventListener("click", async () => {
+    const text = $("text").value;
+    if (!text.trim()) { verdict("bad", "Paste a circular or pick a sample first."); return; }
+    $("run").disabled = true; $("out").hidden = true; $("steps").replaceChildren(); $("prov").textContent = "";
+    verdict("wait", "Reading… the model usually takes a few seconds.");
+    try { render(await post("circulars", { text, source_id: $("source").value || undefined }), text); }
+    catch (e) { verdict("bad", "Could not read the circular: " + e.message); }
+    finally { $("run").disabled = false; }
+  });
+
+  $("approve").addEventListener("click", async () => {
+    $("approve").disabled = true;
+    try {
+      const r = await post("rulesets/" + encodeURIComponent(candidateId) + "/approve", {});
+      const a = $("approved"); a.hidden = false; a.className = "verdict ok";
+      a.textContent = "✓ Approved. Ruleset " + r.version + " (sha256 " + r.sha256.slice(0, 12) + "…) is now active; recorded as audit row #" + r.audit_seq + ".";
+      $("approve").hidden = true;
+    } catch (e) {
+      const a = $("approved"); a.hidden = false; a.className = "verdict bad"; a.textContent = "Not approved: " + e.message;
+      $("approve").disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>

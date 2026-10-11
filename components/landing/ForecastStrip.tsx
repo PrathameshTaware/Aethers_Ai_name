@@ -19,6 +19,7 @@ export function ForecastStrip() {
     queryKey: ['forecast', source],
     queryFn: ({ signal }) => api.forecast(source, signal),
     staleTime: 10 * 60_000,
+    refetchInterval: (q) => (q.state.data?.origin === 'snapshot' ? 20_000 : false),
   });
 
   const fc = data?.data;

@@ -22,6 +22,8 @@ import boto3
 from services.audit.hash_chain import verify_audit_chain
 from services.audit.store import read_chain
 from services.circular.diff_engine import compute_ruleset_hash
+from services.circular.store import load_active_ruleset
+from services.common import fallback_model
 from services.common.http import ApiError, guarded, respond
 from services.forecast.ingest import get_forecast, load_school
 
@@ -37,7 +39,9 @@ def _table():
 
 
 def _bedrock_client():
-    return boto3.client("bedrock-runtime")
+    from botocore.config import Config  # a 1-token probe: never let it hold the Lambda for boto3's default 60 s
+    return boto3.client("bedrock-runtime", config=Config(connect_timeout=2, read_timeout=5,
+                                                         retries={"total_max_attempts": 1}))
 
 
 def check_bedrock(now: float) -> Dict[str, Any]:
@@ -51,19 +55,25 @@ def check_bedrock(now: float) -> Dict[str, Any]:
     except Exception as e:
         code = getattr(e, "response", {}).get("Error", {}).get("Code", type(e).__name__)
         msg = getattr(e, "response", {}).get("Error", {}).get("Message", str(e))[:160]
-        result = {"usable": False, "model": BEDROCK_MODEL_ID, "error": f"{code}: {msg}",
-                  "effect": "notices use the labelled static template (fallback_used=true)"}
+        effect = (f"notices and circulars use the labelled fallback model {fallback_model.label()} "
+                  "(model_provider=fallback), then the static template" if fallback_model.configured() else
+                  "notices use the labelled static template (fallback_used=true); "
+                  "circulars cannot be read, so the ruleset does not change")
+        result = {"usable": False, "model": BEDROCK_MODEL_ID, "error": f"{code}: {msg}", "effect": effect}
     _bedrock_cache.update(at=now, result=result)
     return {**result, "cached": False}
 
 
-def _ruleset() -> Dict[str, Any]:
-    path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-                        "data", "demo", "ruleset_v1.json")
-    with open(path, "r", encoding="utf-8") as f:
-        rs = json.load(f)
+def check_fallback_model() -> Dict[str, Any]:
+    """Configuration only: the fallback is never called by a health check."""
+    return {"configured": fallback_model.configured(), "model": fallback_model.label(),
+            "used": "only when Bedrock fails; every use is recorded as model_provider=fallback"}
+
+
+def _ruleset(table, tenant_id: str) -> Dict[str, Any]:
+    rs, origin = load_active_ruleset(table, tenant_id)
     return {"version": rs.get("ruleset_version"), "sha256": compute_ruleset_hash(rs), "rules": len(rs.get("rules", [])),
-            "jurisdiction": rs.get("jurisdiction")}
+            "jurisdiction": rs.get("jurisdiction"), "origin": origin}
 
 
 @guarded
@@ -83,7 +93,7 @@ def health_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         checks["table"] = {"ok": False, "error": type(e).__name__}
         return respond(503, {"status": "down", "checks": checks, "checked_at": datetime.now(timezone.utc).isoformat()})
 
-    checks["ruleset"] = _ruleset()
+    checks["ruleset"] = _ruleset(table, tenant_id)
     checks["declared_stage"] = ({"stage": meta["declared_stage"], "source": meta.get("stage_source")} if meta
                                 else {"stage": None, "note": "tenant not seeded: run scripts/seed_demo.py"})
 
@@ -100,6 +110,7 @@ def health_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         checks["forecast"] = {"source": "error", "error": type(e).__name__}
 
     checks["bedrock"] = check_bedrock(now)
+    checks["fallback_model"] = check_fallback_model()
 
     rows = read_chain(table, tenant_id)
     ok, message, broken = verify_audit_chain(rows)

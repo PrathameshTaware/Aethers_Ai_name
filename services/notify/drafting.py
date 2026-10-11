@@ -18,26 +18,17 @@ import time
 import urllib.parse
 from typing import Dict, Any, List, Optional
 
-logger = logging.getLogger(__name__)
+from services.common import bedrock, fallback_model
+from services.common.bedrock import (  # noqa: F401  (re-exported for callers and tests)
+    BEDROCK_CONNECT_TIMEOUT_S, BEDROCK_MAX_ATTEMPTS, BEDROCK_MODEL_ID, BEDROCK_READ_TIMEOUT_S, DEFAULT_BUDGET_S)
 
-BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
-BEDROCK_REGION = os.environ.get("APP_REGION", "ap-south-1")
+logger = logging.getLogger(__name__)
 
 # Recorded in the audit chain next to the prompt hash, so a notice traces to the exact template and settings.
 # Bump the version whenever build_prompt's wording changes.
 PROMPT_TEMPLATE_ID = "notice-prompt-v1"
 INFERENCE_CONFIG = {"maxTokens": 300, "temperature": 0.3, "topP": 0.9}
-
-# The Lambda times out at 30 s and drafts three notices in a row, so every model call must give up well before
-# that and leave time for the template fallback and the audit write. boto3's default 60 s read timeout did not.
-BEDROCK_CONNECT_TIMEOUT_S = 2
-BEDROCK_READ_TIMEOUT_S = 8
-BEDROCK_MAX_ATTEMPTS = 2  # one retry, and only for transient errors
-MIN_ATTEMPT_BUDGET_S = 3  # not worth starting a call with less time than this left
-DEFAULT_PACKAGE_BUDGET_S = 20
-TRANSIENT_ERRORS = {"ReadTimeoutError", "ConnectTimeoutError", "EndpointConnectionError", "ConnectionClosedError",
-                    "ThrottlingException", "ServiceUnavailableException", "InternalServerException",
-                    "ModelTimeoutException", "ModelNotReadyException"}
+DEFAULT_PACKAGE_BUDGET_S = DEFAULT_BUDGET_S
 
 
 def sha256_text(text: str) -> str:
@@ -199,58 +190,36 @@ def check_notice(text: str, stage: str, plan: Dict[str, Any], link: Optional[str
     return reasons
 
 
-def _error_code(e: Exception) -> str:
-    return (getattr(e, "response", None) or {}).get("Error", {}).get("Code") or type(e).__name__
-
-
 def _invoke_bedrock(prompt: str, deadline: Optional[float] = None) -> Optional[str]:
-    """Returns the model's notice text, or None on any failure (triggering the static fallback).
+    """Returns the model's notice text, or None on any failure (triggering the static fallback)."""
+    reply = bedrock.converse(prompt, INFERENCE_CONFIG, deadline)
+    text = reply["text"]
+    if text and len(text) > 20:
+        logger.info("Bedrock %s generated notice (len=%d, %d ms)", BEDROCK_MODEL_ID, len(text), reply["latency_ms"])
+        return text
+    logger.warning("No usable Bedrock notice (%s)", reply["error"] or "too short")
+    return None
 
-    Each attempt is capped at BEDROCK_READ_TIMEOUT_S and at the time left before `deadline` (a time.monotonic()
-    value), so a slow model costs seconds, not the whole Lambda.
+
+def _invoke_model(prompt: str, deadline: Optional[float] = None, skip_primary: bool = False) -> Optional[Dict[str, Any]]:
+    """Bedrock first; the labelled fallback model only if Bedrock gave nothing. None: use the static template.
+
+    Returns {"text", "model_provider": "bedrock"|"fallback", "model_id", "primary_error"}.
     """
-    try:
-        import boto3
-        from botocore.config import Config
-    except ImportError:
-        logger.info("boto3 not available; falling back to static template")
+    if not skip_primary:
+        text = _invoke_bedrock(prompt, deadline)
+        if text:
+            return {"text": text, "model_provider": "bedrock", "model_id": BEDROCK_MODEL_ID, "primary_error": None}
+    if not fallback_model.configured():
         return None
-
-    if deadline is None:
-        deadline = time.monotonic() + DEFAULT_PACKAGE_BUDGET_S
-    for attempt in range(1, BEDROCK_MAX_ATTEMPTS + 1):
-        remaining = deadline - time.monotonic()
-        if remaining < MIN_ATTEMPT_BUDGET_S:
-            logger.warning("No time left for a Bedrock call (%.1fs); falling back to static template", remaining)
-            return None
-        try:
-            client = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION, config=Config(
-                connect_timeout=BEDROCK_CONNECT_TIMEOUT_S,
-                read_timeout=min(BEDROCK_READ_TIMEOUT_S, remaining - BEDROCK_CONNECT_TIMEOUT_S),
-                retries={"total_max_attempts": 1}))  # retries are ours, so they respect the deadline
-            # Converse has one request shape for Nova, Claude and the other Bedrock text models.
-            response = client.converse(
-                modelId=BEDROCK_MODEL_ID,
-                messages=[{"role": "user", "content": [{"text": prompt}]}],
-                inferenceConfig=INFERENCE_CONFIG,
-            )
-        except Exception as e:
-            # Circuit breaker: any Bedrock failure (AccessDenied, throttle, timeout, credentials) falls back to
-            # the static template; only transient ones get one more try.
-            code = _error_code(e)
-            if code in TRANSIENT_ERRORS and attempt < BEDROCK_MAX_ATTEMPTS:
-                logger.warning("Bedrock attempt %d failed (%s); retrying", attempt, code)
-                continue
-            logger.warning("Bedrock invocation failed (%s: %s); falling back to static template", code, str(e))
-            return None
-
-        content = response.get("output", {}).get("message", {}).get("content") or [{}]
-        generated_text = content[0].get("text", "").strip()
-        if generated_text and len(generated_text) > 20:
-            logger.info("Bedrock %s generated notice successfully (len=%d)", BEDROCK_MODEL_ID, len(generated_text))
-            return generated_text
-        logger.warning("Bedrock returned empty or too-short response; falling back to static template")
-        return None
+    reply = fallback_model.complete(prompt, INFERENCE_CONFIG,
+                                    deadline if deadline is not None else time.monotonic() + DEFAULT_BUDGET_S,
+                                    BEDROCK_READ_TIMEOUT_S)
+    if reply["text"] and len(reply["text"]) > 20:
+        logger.info("Fallback model %s generated notice (Bedrock unavailable)", fallback_model.label())
+        return {"text": reply["text"], "model_provider": "fallback", "model_id": fallback_model.label(),
+                "primary_error": "BedrockUnavailable"}
+    logger.warning("No usable fallback notice (%s); using static template", reply["error"] or "too short")
     return None
 
 
@@ -264,13 +233,14 @@ def draft_notice(
     public_base_url: Optional[str] = None,
     force_fallback: bool = False,
     deadline: Optional[float] = None,
+    skip_primary: bool = False,
 ) -> Dict[str, Any]:
     """
     Drafts an official safety notice.
-    Attempts Bedrock (Nova Lite) generation first. On any failure — AccessDeniedException,
-    missing credentials, throttle, timeout — or when the model's text fails check_notice, falls back to
-    pre-validated static bilingual templates (circuit breaker pattern). `deadline` is a time.monotonic()
-    value no model call may run past.
+    Attempts Bedrock (Nova Lite) generation first. If Bedrock fails (AccessDeniedException, throttle, timeout),
+    the labelled fallback model is tried when configured. If no model answers, or the model's text fails
+    check_notice, falls back to pre-validated static bilingual templates (circuit breaker pattern).
+    `deadline` is a time.monotonic() value no model call may run past.
     """
     link = verify_url(receipt_id, public_base_url)
     if date_str is None:  # the decision's own date, e.g. TENANT#demo#2026-10-12#MORN
@@ -284,23 +254,25 @@ def draft_notice(
     fallback_reason = "forced" if force_fallback else None
     rejected_reasons: List[str] = []
     rejected_text_sha256 = None
+    model = None
 
-    # 1. Attempt Bedrock generation (unless force_fallback is set); the model proposes, check_notice decides.
+    # 1. Attempt model generation (unless force_fallback is set); the model proposes, check_notice decides.
     if not force_fallback:
         prompt = build_prompt(audience, language, stage, plan, link)
-        bedrock_result = _invoke_bedrock(prompt, deadline)
-        if bedrock_result is None:
+        model = _invoke_model(prompt, deadline, skip_primary)
+        if model is None:
             fallback_reason = "model_unavailable"
         else:
             prompt_sha256 = sha256_text(prompt)
-            rejected_reasons = check_notice(bedrock_result, stage, plan, link, language)
+            rejected_reasons = check_notice(model["text"], stage, plan, link, language)
             if rejected_reasons:
                 fallback_reason = "output_rejected"
-                rejected_text_sha256 = sha256_text(bedrock_result)
+                rejected_text_sha256 = sha256_text(model["text"])
                 logger.warning("Model notice rejected (%s); falling back to static template", rejected_reasons)
             else:
-                notice_text = bedrock_result
-                model_used = f"Bedrock-{BEDROCK_MODEL_ID}"
+                notice_text = model["text"]
+                model_used = (f"Bedrock-{model['model_id']}" if model["model_provider"] == "bedrock"
+                              else f"Fallback-{model['model_id']}")
 
     # 2. Static template fallback (circuit breaker)
     facts = plan_facts(plan)
@@ -335,7 +307,11 @@ def draft_notice(
         "facts": facts,
         "model_used": model_used,
         "fallback_used": fallback_used,
-        "model_id": None if fallback_used else BEDROCK_MODEL_ID,
+        "model_id": None if fallback_used else model["model_id"],
+        # Which model answered: "bedrock" (primary) or "fallback" (only when Bedrock failed). None: template.
+        "model_provider": None if fallback_used else model["model_provider"],
+        # Set whenever Bedrock was skipped or failed, even if the text then came from the template.
+        "primary_error": model["primary_error"] if model else (None if force_fallback else "BedrockUnavailable"),
         "template_id": template_id,
         "fallback_reason": fallback_reason,
         "rejected_reasons": rejected_reasons,
@@ -356,16 +332,20 @@ def generate_parent_broadcast_package(
 ) -> Dict[str, Any]:
     """
     Creates complete bilingual notice package for WhatsApp distribution.
-    All three notices share one deadline, and once the model is unavailable the rest skip it.
+    All three notices share one deadline. Once Bedrock fails the rest go straight to the fallback model, and once
+    no model answers the rest go straight to the template.
     """
     if deadline is None:
         deadline = time.monotonic() + DEFAULT_PACKAGE_BUDGET_S
     notices = []
+    skip_primary = False
     for audience, language in (("parents", "english"), ("parents", "hindi"), ("teachers", "english")):
         notice = draft_notice(plan, audience=audience, language=language, stage=stage, receipt_id=receipt_id,
-                              deadline=deadline)
+                              deadline=deadline, skip_primary=skip_primary)
+        if notice["primary_error"]:
+            skip_primary = True  # don't wait on Bedrock again in this run
         if notice["fallback_reason"] == "model_unavailable":
-            deadline = 0.0  # circuit open: don't wait on a model that just failed
+            deadline = 0.0  # circuit open: no model answered
         notices.append(notice)
     eng_notice, hin_notice, teacher_notice = notices
 

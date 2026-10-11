@@ -21,8 +21,13 @@ export async function upstream(path: string, init?: RequestInit): Promise<Respon
       ...init,
       headers: { 'Content-Type': 'application/json', 'x-saans-admin-key': key },
       cache: 'no-store',
+      // A stalled connection would otherwise hold the browser's request open; API Gateway itself stops at 29 s.
+      signal: AbortSignal.timeout(15_000),
     });
-  } catch {
+  } catch (e) {
+    if ((e as Error).name === 'TimeoutError') {
+      return fail(504, 'upstream_timeout', 'The Saans API did not answer in time. Try again.');
+    }
     return fail(502, 'upstream_unreachable', 'Could not reach the Saans API.');
   }
 

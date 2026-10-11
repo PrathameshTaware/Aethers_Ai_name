@@ -17,6 +17,7 @@ from services.planner.csv_loader import load_timetable_csv
 from services.audit.hash_chain import compute_payload_digest
 from services.audit.store import append_audit
 from services.circular.diff_engine import compute_ruleset_hash
+from services.circular.store import load_active_ruleset
 from services.forecast.ingest import SOURCES as FORECAST_SOURCES, get_forecast
 from services.common.http import ApiError, guarded, is_http_event, json_body, respond
 
@@ -135,6 +136,8 @@ def run_planner(run: Dict[str, str], execution: str = "") -> Dict[str, Any]:
     timetable_records, _, ruleset_data = _get_demo_fixtures()
     in_aws = bool(os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
     table = boto3.resource("dynamodb").Table(TABLE_NAME) if in_aws else None
+    if table is not None:  # a ruleset a person approved from a circular, else the bundled one
+        ruleset_data, _ = load_active_ruleset(table, run["tenant_id"])
 
     forecast_data = get_forecast(run["date"], timetable_records, run["forecast_source"], table=table)
     if in_aws and forecast_data.get("fallback_reason"):
@@ -261,6 +264,8 @@ def rehearse_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         raise ApiError(400, "invalid_forecast_source", f"forecast_source must be one of {FORECAST_SOURCES}.")
 
     timetable_records, _, ruleset_data = _get_demo_fixtures()
+    if os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        ruleset_data, _ = load_active_ruleset(boto3.resource("dynamodb").Table(TABLE_NAME), "TENANT#demo")
     tomorrow = (datetime.now(IST).date() + timedelta(days=1)).isoformat()
     forecast_data = get_forecast(tomorrow, timetable_records, source)
 

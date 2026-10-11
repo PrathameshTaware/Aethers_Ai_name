@@ -11,22 +11,11 @@ Writes data/gold/eval_table.json.
 
 import json
 import os
-import re
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-from services.circular.validator import validate_ruleset_candidates
-
-# Words a quote must contain before it can justify an action on outdoor sports / PE.
-# (Reported here as a known gap; M4 moves this check into the validator itself.)
-SPORT_WORDS = re.compile(r"\b(sport|sports|physical education|pt|games|outdoor activit)", re.I)
-
-
-def unsupported_actions(rule: Dict[str, Any]) -> List[str]:
-    action = rule.get("action", {})
-    if any(k in action for k in ("outdoor_sports", "outdoor_pt")) and not SPORT_WORDS.search(rule.get("source_quote", "")):
-        return [k for k in ("outdoor_sports", "outdoor_pt") if k in action]
-    return []
+# Strict mode (used for model-extracted rules) refuses these; hand-entered rules are reported, not refused.
+from services.circular.validator import unsupported_actions, validate_ruleset_candidates
 
 
 def run_gold_evaluation() -> Dict[str, Any]:

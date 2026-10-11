@@ -115,9 +115,16 @@
       if (b.eventType === "NOTICES_DRAFTED" && b.payloadJson) {
         (JSON.parse(b.payloadJson).notices || []).forEach((n) => {
           const p = document.createElement("div"); p.className = "prov";
+          const why = n.fallback_reason === "output_rejected"
+            ? "the model's draft was refused by code (" + (n.rejected_reasons || []).join(", ") + "), so the static template was sent"
+            : n.fallback_reason === "model_unavailable" ? "the model was unavailable, so the static template was sent"
+            : "static template";
           p.textContent = n.language + " · " + n.audience + ": " + (n.fallback_used
-            ? "static template " + (n.template_id || "")
-            : "written by Bedrock " + n.model_id + " · prompt " + String(n.prompt_sha256).slice(0, 12) + "…")
+            ? why + " " + (n.template_id || "")
+            : (n.model_provider === "fallback" ? "written by the fallback model " + n.model_id + " because Bedrock was unavailable"
+                                                : "written by Bedrock " + n.model_id)
+              + ", passed the code checks (only plan numbers, only this receipt link, right script)"
+              + " · prompt " + (n.prompt_template_id || "") + " " + String(n.prompt_sha256).slice(0, 12) + "…")
             + " · text " + String(n.text_sha256).slice(0, 12) + "…";
           li.append(p);
         });
@@ -165,7 +172,8 @@
     const hashes = new Set(await Promise.all([...variants].map(sha256)));
     const hit = recorded.find((r) => hashes.has(r.n.text_sha256));
     if (!hit) { out.className = "result bad"; out.textContent = "✕ This exact text is not in the school's log. It may have been edited or did not come from this decision."; return; }
-    const n = hit.n, who = n.fallback_used ? "the school's static template" : "Bedrock " + n.model_id;
+    const n = hit.n, who = n.fallback_used ? "the school's static template"
+      : (n.model_provider === "fallback" ? "the fallback model " : "Bedrock ") + n.model_id + " and checked by code";
     const chainOk = originalOutcome.firstBad === null;
     out.className = "result " + (chainOk ? "ok" : "bad");
     out.textContent = (chainOk ? "✓ Genuine: " : "⚠ Text matches, but the log itself is broken: ") + "this is the " + n.language + " " +

@@ -12,6 +12,7 @@ Each test fails on the old code and passes on the fix.
 import json
 import os
 import pathlib
+import re
 import unittest
 from unittest import mock
 
@@ -130,6 +131,17 @@ class TestTemplateHasNoTriggerCycle(unittest.TestCase):
         tpl = (ROOT / "infra" / "template.yaml").read_text(encoding="utf-8")
         watch_api = tpl.split("  WatchApiFunction:")[1].split(chr(10) + "  # ")[0]
         self.assertNotIn("!Ref TriggerFunction", watch_api)
+
+    def test_no_api_backed_function_references_the_workflow(self):
+        # API -> function -> workflow -> notify -> API (notify links to the receipt page). Use ARNs built by name.
+        tpl = (ROOT / "infra" / "template.yaml").read_text(encoding="utf-8")
+        resources = re.split(r"\n  (?=[A-Za-z0-9]+:\n    Type: )", tpl.split("\nResources:\n", 1)[1].split("\nOutputs:", 1)[0])
+        for res in resources:
+            if "Type: Api" not in res:
+                continue
+            name = res.split(":", 1)[0].strip()
+            with self.subTest(name):
+                self.assertNotRegex(res, r"!Ref (SaansWorkflow|TriggerFunction)\b|!GetAtt SaansWorkflow|\$\{SaansWorkflow\.")
 
 
 class TestNoSecretsInScripts(unittest.TestCase):

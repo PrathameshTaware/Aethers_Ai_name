@@ -18,16 +18,12 @@ export function Haze() {
     root.style.setProperty('--stage-color', meta.hex);
   }, [stage]);
 
+  // The grain is the same SVG noise as a tiled background (see .haze-grain), so the browser rasterises it once
+  // instead of re-running a full-viewport filter on every repaint.
   return (
     <div aria-hidden>
       <div className="haze-layer" />
-      <svg className="haze-grain h-full w-full">
-        <filter id="haze-noise">
-          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch" />
-          <feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.32  0 0 0 0 0.26  0 0 0 0.9 0" />
-        </filter>
-        <rect width="100%" height="100%" filter="url(#haze-noise)" />
-      </svg>
+      <div className="haze-grain" />
     </div>
   );
 }

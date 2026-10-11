@@ -94,6 +94,21 @@ const COPY = {
     'स्थिर टेम्पलेट द्वारा लिखा गया (लेबल किया गया विकल्प)',
     'நிலையான வார்ப்புருவால் எழுதப்பட்டது (குறிக்கப்பட்ட மாற்று வழி)',
   ],
+  provenanceRejected: [
+    "The model's draft was refused by code ({reasons}), so the static template was sent",
+    'मॉडल का मसौदा कोड ने अस्वीकार किया ({reasons}), इसलिए स्थिर टेम्पलेट भेजा गया',
+    'மாதிரியின் வரைவை குறியீடு நிராகரித்தது ({reasons}), எனவே நிலையான வார்ப்புரு அனுப்பப்பட்டது',
+  ],
+  provenanceModel: [
+    'Written by Bedrock {model} and passed the code checks',
+    'Bedrock {model} द्वारा लिखा गया, कोड की जाँच में पास',
+    'Bedrock {model} எழுதியது, குறியீட்டுச் சரிபார்ப்பில் தேறியது',
+  ],
+  provenanceFallbackModel: [
+    'Written by the fallback model {model} because Bedrock was unavailable, and passed the code checks',
+    'Bedrock उपलब्ध न होने पर वैकल्पिक मॉडल {model} द्वारा लिखा गया, कोड की जाँच में पास',
+    'Bedrock கிடைக்காததால் மாற்று மாதிரி {model} எழுதியது, குறியீட்டுச் சரிபார்ப்பில் தேறியது',
+  ],
   snapshot: [
     'Offline: showing a saved copy of real responses.',
     'ऑफ़लाइन: सहेजे गए वास्तविक उत्तर दिखाए जा रहे हैं।',

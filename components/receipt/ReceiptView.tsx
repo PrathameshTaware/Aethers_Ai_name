@@ -32,7 +32,9 @@ export function recentReceipts(): string[] {
 }
 
 const writerOf = (n: RecordedNotice['notice']) =>
-  n.fallback_used ? `static template ${n.template_id ?? ''}`.trim() : `Bedrock ${n.model_id}`;
+  n.fallback_used
+    ? `static template ${n.template_id ?? ''}`.trim()
+    : `${n.model_provider === 'fallback' ? 'fallback model' : 'Bedrock'} ${n.model_id}`;
 
 export function ReceiptView({ id }: { id: string }) {
   const { t, lang } = useT();
@@ -322,7 +324,13 @@ function Verifier({ receipt, t, lang }: { receipt: Receipt; t: ReturnType<typeof
                 {myNotices.map(({ notice: n, block }) => (
                   <li key={n.text_sha256} className="border-l-2 border-ink pl-3 text-[14px]">
                     <p className="font-semibold capitalize">{n.language} · {n.audience} <span className="num font-normal text-ink-soft">row #{block.sequence}</span></p>
-                    <p>{n.fallback_used ? 'Static template (labelled fallback)' : `Written by Bedrock ${n.model_id}`}</p>
+                    <p>
+                      {!n.fallback_used
+                        ? t(n.model_provider === 'fallback' ? 'provenanceFallbackModel' : 'provenanceModel', { model: n.model_id ?? '' })
+                        : n.fallback_reason === 'output_rejected'
+                          ? t('provenanceRejected', { reasons: (n.rejected_reasons ?? []).join(', ') })
+                          : 'Static template (labelled fallback)'}
+                    </p>
                     <p className="num text-[12px] text-ink-soft">
                       {n.fallback_used ? n.template_id : `prompt ${shortHash(n.prompt_sha256, 12)}`} · text {shortHash(n.text_sha256, 12)}
                     </p>

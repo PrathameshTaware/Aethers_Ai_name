@@ -13,12 +13,38 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
+/** The API answers in about a second; a request still open after this has stalled on the network. */
+const TIMEOUT_MS = 6000;
+
+/**
+ * fetch with a timeout. A stalled connection otherwise never fails, so the UI would sit on its skeleton and the
+ * snapshot fallback would never run. A cancel from the caller (React Query) still surfaces as an AbortError.
+ */
+async function timedFetch(url: string, init?: RequestInit, timeoutMs = TIMEOUT_MS): Promise<Response> {
+  const ctrl = new AbortController();
+  const caller = init?.signal;
+  const onAbort = () => ctrl.abort();
+  if (caller?.aborted) ctrl.abort();
+  caller?.addEventListener('abort', onAbort, { once: true });
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } catch (e) {
+    if (caller?.aborted) throw e;
+    if (ctrl.signal.aborted) throw new ApiError(0, 'timeout', 'The Saans API did not answer in time.');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+    caller?.removeEventListener('abort', onAbort);
+  }
+}
+
+async function request<T>(url: string, init?: RequestInit, timeoutMs?: number): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(url, { ...init, headers: { Accept: 'application/json', ...init?.headers } });
+    res = await timedFetch(url, { ...init, headers: { Accept: 'application/json', ...init?.headers } }, timeoutMs);
   } catch (e) {
-    if ((e as Error).name === 'AbortError') throw e;
+    if ((e as Error).name === 'AbortError' || e instanceof ApiError) throw e;
     throw new ApiError(0, 'network', 'Could not reach the Saans API.');
   }
   const body = await res.json().catch(() => null);
@@ -43,7 +69,13 @@ const postJson = (body: unknown, signal?: AbortSignal): RequestInit => ({
  */
 async function withSnapshot<T>(live: () => Promise<T>, snapshotFile: string): Promise<Sourced<T>> {
   try {
-    return { data: await live(), origin: 'live' };
+    try {
+      return { data: await live(), origin: 'live' };
+    } catch (e) {
+      // A stalled or dropped connection usually works on a fresh attempt; an HTTP error answer will not.
+      if (!(e instanceof ApiError) || e.status !== 0) throw e;
+      return { data: await live(), origin: 'live' };
+    }
   } catch (e) {
     if ((e as Error).name === 'AbortError') throw e;
     const res = await fetch(`/snapshot/${snapshotFile}`).catch(() => null);
@@ -70,7 +102,7 @@ export const api = {
   /** GET /health. A 503 still carries a body worth showing, so it is not treated as a failure. */
   health: (signal?: AbortSignal) =>
     withSnapshot<Health>(async () => {
-      const res = await fetch(`${API_BASE}/health`, { signal });
+      const res = await timedFetch(`${API_BASE}/health`, { signal });
       const body = await res.json();
       if (!body?.status) throw new ApiError(res.status, 'http_error', 'Unexpected /health response.');
       return body as Health;
@@ -95,6 +127,7 @@ export const api = {
 
   watch: (signal?: AbortSignal) => request<WatchResponse>('/api/admin/watch', { signal }),
 
+  // Starting a run goes server proxy -> API -> Step Functions; allow it longer than a read.
   startRun: (body: { date: string; stage?: StageCode }) =>
-    request<RunStarted>('/api/admin/runs', postJson(body)),
+    request<RunStarted>('/api/admin/runs', postJson(body), 20_000),
 };
