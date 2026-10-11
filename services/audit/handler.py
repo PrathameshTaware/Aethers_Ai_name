@@ -14,6 +14,7 @@ from typing import Dict, Any
 
 import boto3
 
+from services.audit.anchor import anchor_summary_or_none, check_against_anchors
 from services.audit.hash_chain import GENESIS_HASH, verify_audit_chain
 from services.audit.store import read_chain
 from services.common.http import ApiError, guarded, respond
@@ -50,6 +51,7 @@ def receipt_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     rows = read_chain(table, ref["tenant_id"])
     ok, message, broken = verify_audit_chain(rows)
+    anchor = anchor_summary_or_none(ref["tenant_id"], rows)
     decision = table.get_item(Key={"PK": ref["tenant_id"],
                                    "SK": "DEC#" + ref["decision_id"].split("#", 2)[2]}).get("Item") or {}
     blocks = [{
@@ -58,6 +60,17 @@ def receipt_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         "payloadJson": r.get("payload_json"),
         "decisionId": (r.get("payload") or {}).get("decision_id"),
     } for r in rows]
+
+    broken_seq = blocks[broken]["sequence"] if broken >= 0 else None
+    anchor_mismatch_seq = None
+
+    if ok and anchor and anchor.get("anchors"):
+        mismatch = check_against_anchors(rows, anchor["anchors"])
+        if mismatch:
+            ok = False
+            broken_seq = mismatch["seq"]
+            anchor_mismatch_seq = mismatch["seq"]
+            message = f"Row #{mismatch['seq']} no longer matches S3 anchor {mismatch.get('key', '')} ({mismatch['hash']})"
 
     return respond(200, {
         "receiptId": receipt_id,
@@ -68,9 +81,14 @@ def receipt_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         "genesisHash": GENESIS_HASH,
         "auditHead": blocks[-1]["hash"] if blocks else GENESIS_HASH,
         "blocks": blocks,
+        "anchor": anchor,
         "hashing": HASHING_SPEC,
-        "serverVerification": {"valid": ok, "message": message,
-                               "brokenSequence": blocks[broken]["sequence"] if broken >= 0 else None},
+        "serverVerification": {
+            "valid": ok,
+            "message": message,
+            "brokenSequence": broken_seq,
+            "anchorMismatchSequence": anchor_mismatch_seq,
+        },
         "verifiedAt": datetime.now(timezone.utc).isoformat(),
     })
 

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { StageNumber } from '@/lib/types';
 
-export type Lang = 'en' | 'hi' | 'ta';
+export type Lang = 'en' | 'hi';
 
 interface UiStore {
   /** The GRAP stage being rehearsed. Drives the haze and the 3D scene everywhere. */

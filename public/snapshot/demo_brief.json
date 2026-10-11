@@ -1,0 +1,1519 @@
+{
+  "decision_id": "TENANT#demo#2026-10-12#MORN",
+  "status": "APPROVED_AND_NOTIFIED",
+  "decided_by_role": "principal",
+  "decided_at": "2026-10-11T19:32:00Z",
+  "plan": {
+    "decision_id": "TENANT#demo#2026-10-12#MORN",
+    "declared_stage": "III",
+    "status": "pending_approval",
+    "plan_a": [],
+    "plan_b": [
+      {
+        "class": "6A",
+        "period": "P3",
+        "subject": "Physical Education",
+        "venue": "Ground_A",
+        "fallback_venue": "Indoor Hall / Classroom",
+        "assigned_activity": "Table Tennis Inter-House League",
+        "activity_is_physical": true,
+        "duration_minutes": 40,
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_id": "r-017"
+      },
+      {
+        "class": "7A",
+        "period": "P2",
+        "subject": "Physical Education",
+        "venue": "Ground_A",
+        "fallback_venue": "Indoor Hall / Classroom",
+        "assigned_activity": "Indoor Calisthenics & Core Conditioning",
+        "activity_is_physical": true,
+        "duration_minutes": 40,
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_id": "r-017"
+      },
+      {
+        "class": "7B",
+        "period": "P2",
+        "subject": "Physical Education",
+        "venue": "Ground_B",
+        "fallback_venue": "Indoor Hall / Classroom",
+        "assigned_activity": "Skipping & Agility Ladder Circuit",
+        "activity_is_physical": true,
+        "duration_minutes": 40,
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_id": "r-017"
+      },
+      {
+        "class": "8A",
+        "period": "P4",
+        "subject": "Physical Education",
+        "venue": "Ground_B",
+        "fallback_venue": "Indoor Hall / Classroom",
+        "assigned_activity": "Table Tennis Inter-House League",
+        "activity_is_physical": true,
+        "duration_minutes": 40,
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_id": "r-017"
+      },
+      {
+        "class": "9A",
+        "period": "P5",
+        "subject": "Physical Education",
+        "venue": "Ground_A",
+        "fallback_venue": "Indoor Hall / Classroom",
+        "assigned_activity": "Table Tennis & Badminton Footwork Drills",
+        "activity_is_physical": true,
+        "duration_minutes": 40,
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_id": "r-017"
+      },
+      {
+        "class": "10A",
+        "period": "P6",
+        "subject": "Physical Education",
+        "venue": "Ground_A",
+        "fallback_venue": "Indoor Hall / Classroom",
+        "assigned_activity": "Yoga & Mobility Session",
+        "activity_is_physical": true,
+        "duration_minutes": 40,
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_id": "r-017"
+      }
+    ],
+    "exposure_before": 76600.0,
+    "exposure_after": 0.0,
+    "exposure_reduction_pct": 100.0,
+    "plan_b_indoor_exposure_modelled": null,
+    "exposure_averted_modelled": null,
+    "pe_minutes": {
+      "scheduled": 240,
+      "unchanged": 0,
+      "moved_to_cleaner_slot": 0,
+      "replaced_indoor_active": 240,
+      "lost": 0,
+      "kept_active": 240,
+      "basis": "measured from the timetable"
+    },
+    "pe_minutes_preserved": 100.0,
+    "ruleset_version": "2026-10-08-r1",
+    "classified_periods": [
+      {
+        "class": "6A",
+        "period": "P1",
+        "start": "08:30",
+        "end": "09:10",
+        "subject": "English",
+        "teacher_code": "T_ENG1",
+        "venue": "Room_101",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 210.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "6A",
+        "period": "P2",
+        "start": "09:10",
+        "end": "09:50",
+        "subject": "Mathematics",
+        "teacher_code": "T_MATH1",
+        "venue": "Room_101",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 280.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "6A",
+        "period": "P3",
+        "start": "10:05",
+        "end": "10:45",
+        "subject": "Physical Education",
+        "teacher_code": "T_PE1",
+        "venue": "Ground_A",
+        "label": "banned",
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_ids": [
+          "r-017"
+        ],
+        "pm25": 360.0,
+        "is_outdoor": true
+      },
+      {
+        "class": "6A",
+        "period": "P4",
+        "start": "10:45",
+        "end": "11:25",
+        "subject": "Science",
+        "teacher_code": "T_SCI1",
+        "venue": "Lab_1",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 395.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "6A",
+        "period": "P5",
+        "start": "12:00",
+        "end": "12:40",
+        "subject": "Hindi",
+        "teacher_code": "T_HIN1",
+        "venue": "Room_101",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 340.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "6A",
+        "period": "P6",
+        "start": "12:40",
+        "end": "13:20",
+        "subject": "Social Studies",
+        "teacher_code": "T_SST1",
+        "venue": "Room_101",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 260.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "6A",
+        "period": "P7",
+        "start": "13:25",
+        "end": "14:05",
+        "subject": "Art",
+        "teacher_code": "T_ART1",
+        "venue": "Art_Room",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 140.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "6A",
+        "period": "P8",
+        "start": "14:05",
+        "end": "14:45",
+        "subject": "Library",
+        "teacher_code": "T_LIB1",
+        "venue": "Library",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 95.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "7A",
+        "period": "P1",
+        "start": "08:30",
+        "end": "09:10",
+        "subject": "Mathematics",
+        "teacher_code": "T_MATH2",
+        "venue": "Room_102",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 210.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "7A",
+        "period": "P2",
+        "start": "09:10",
+        "end": "09:50",
+        "subject": "Physical Education",
+        "teacher_code": "T_PE2",
+        "venue": "Ground_A",
+        "label": "banned",
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_ids": [
+          "r-017"
+        ],
+        "pm25": 280.0,
+        "is_outdoor": true
+      },
+      {
+        "class": "7A",
+        "period": "P3",
+        "start": "10:05",
+        "end": "10:45",
+        "subject": "Science",
+        "teacher_code": "T_SCI2",
+        "venue": "Room_102",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 360.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "7A",
+        "period": "P4",
+        "start": "10:45",
+        "end": "11:25",
+        "subject": "English",
+        "teacher_code": "T_ENG2",
+        "venue": "Room_102",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 395.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "7A",
+        "period": "P5",
+        "start": "12:00",
+        "end": "12:40",
+        "subject": "Social Studies",
+        "teacher_code": "T_SST2",
+        "venue": "Room_102",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 340.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "7A",
+        "period": "P6",
+        "start": "12:40",
+        "end": "13:20",
+        "subject": "Hindi",
+        "teacher_code": "T_HIN2",
+        "venue": "Room_102",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 260.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "7A",
+        "period": "P7",
+        "start": "13:25",
+        "end": "14:05",
+        "subject": "Computer",
+        "teacher_code": "T_CS1",
+        "venue": "Computer_Lab",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 140.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "7A",
+        "period": "P8",
+        "start": "14:05",
+        "end": "14:45",
+        "subject": "Music",
+        "teacher_code": "T_MUS1",
+        "venue": "Music_Room",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 95.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "7B",
+        "period": "P1",
+        "start": "08:30",
+        "end": "09:10",
+        "subject": "Hindi",
+        "teacher_code": "T_HIN1",
+        "venue": "Room_103",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 210.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "7B",
+        "period": "P2",
+        "start": "09:10",
+        "end": "09:50",
+        "subject": "Physical Education",
+        "teacher_code": "T_PE1",
+        "venue": "Ground_B",
+        "label": "banned",
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_ids": [
+          "r-017"
+        ],
+        "pm25": 280.0,
+        "is_outdoor": true
+      },
+      {
+        "class": "7B",
+        "period": "P3",
+        "start": "10:05",
+        "end": "10:45",
+        "subject": "Mathematics",
+        "teacher_code": "T_MATH1",
+        "venue": "Room_103",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 360.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "7B",
+        "period": "P4",
+        "start": "10:45",
+        "end": "11:25",
+        "subject": "Social Studies",
+        "teacher_code": "T_SST1",
+        "venue": "Room_103",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 395.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "7B",
+        "period": "P5",
+        "start": "12:00",
+        "end": "12:40",
+        "subject": "Science",
+        "teacher_code": "T_SCI1",
+        "venue": "Room_103",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 340.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "7B",
+        "period": "P6",
+        "start": "12:40",
+        "end": "13:20",
+        "subject": "English",
+        "teacher_code": "T_ENG1",
+        "venue": "Room_103",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 260.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "7B",
+        "period": "P7",
+        "start": "13:25",
+        "end": "14:05",
+        "subject": "Library",
+        "teacher_code": "T_LIB1",
+        "venue": "Library",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 140.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "7B",
+        "period": "P8",
+        "start": "14:05",
+        "end": "14:45",
+        "subject": "Art",
+        "teacher_code": "T_ART1",
+        "venue": "Art_Room",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 95.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "8A",
+        "period": "P1",
+        "start": "08:30",
+        "end": "09:10",
+        "subject": "Science",
+        "teacher_code": "T_SCI3",
+        "venue": "Room_104",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 210.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "8A",
+        "period": "P2",
+        "start": "09:10",
+        "end": "09:50",
+        "subject": "Social Studies",
+        "teacher_code": "T_SST2",
+        "venue": "Room_104",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 280.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "8A",
+        "period": "P3",
+        "start": "10:05",
+        "end": "10:45",
+        "subject": "English",
+        "teacher_code": "T_ENG2",
+        "venue": "Room_104",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 360.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "8A",
+        "period": "P4",
+        "start": "10:45",
+        "end": "11:25",
+        "subject": "Physical Education",
+        "teacher_code": "T_PE2",
+        "venue": "Ground_B",
+        "label": "banned",
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_ids": [
+          "r-017"
+        ],
+        "pm25": 395.0,
+        "is_outdoor": true
+      },
+      {
+        "class": "8A",
+        "period": "P5",
+        "start": "12:00",
+        "end": "12:40",
+        "subject": "Mathematics",
+        "teacher_code": "T_MATH2",
+        "venue": "Room_104",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 340.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "8A",
+        "period": "P6",
+        "start": "12:40",
+        "end": "13:20",
+        "subject": "Sanskrit",
+        "teacher_code": "T_SKT1",
+        "venue": "Room_104",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 260.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "8A",
+        "period": "P7",
+        "start": "13:25",
+        "end": "14:05",
+        "subject": "Computer",
+        "teacher_code": "T_CS2",
+        "venue": "Computer_Lab_2",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 140.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "8A",
+        "period": "P8",
+        "start": "14:05",
+        "end": "14:45",
+        "subject": "Crafts",
+        "teacher_code": "T_ART2",
+        "venue": "Room_104",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 95.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "9A",
+        "period": "P1",
+        "start": "08:30",
+        "end": "09:10",
+        "subject": "Physics",
+        "teacher_code": "T_PHY1",
+        "venue": "Lab_2",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 210.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "9A",
+        "period": "P2",
+        "start": "09:10",
+        "end": "09:50",
+        "subject": "Chemistry",
+        "teacher_code": "T_CHE1",
+        "venue": "Lab_3",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 280.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "9A",
+        "period": "P3",
+        "start": "10:05",
+        "end": "10:45",
+        "subject": "Mathematics",
+        "teacher_code": "T_MATH3",
+        "venue": "Room_201",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 360.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "9A",
+        "period": "P4",
+        "start": "10:45",
+        "end": "11:25",
+        "subject": "English",
+        "teacher_code": "T_ENG3",
+        "venue": "Room_201",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 395.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "9A",
+        "period": "P5",
+        "start": "12:00",
+        "end": "12:40",
+        "subject": "Physical Education",
+        "teacher_code": "T_PE1",
+        "venue": "Ground_A",
+        "label": "banned",
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_ids": [
+          "r-017"
+        ],
+        "pm25": 340.0,
+        "is_outdoor": true
+      },
+      {
+        "class": "9A",
+        "period": "P6",
+        "start": "12:40",
+        "end": "13:20",
+        "subject": "Biology",
+        "teacher_code": "T_BIO1",
+        "venue": "Room_201",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 260.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "9A",
+        "period": "P7",
+        "start": "13:25",
+        "end": "14:05",
+        "subject": "History",
+        "teacher_code": "T_HIS1",
+        "venue": "Room_201",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 140.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "9A",
+        "period": "P8",
+        "start": "14:05",
+        "end": "14:45",
+        "subject": "Economics",
+        "teacher_code": "T_ECO1",
+        "venue": "Room_201",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 95.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "10A",
+        "period": "P1",
+        "start": "08:30",
+        "end": "09:10",
+        "subject": "Mathematics",
+        "teacher_code": "T_MATH3",
+        "venue": "Room_202",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 210.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "10A",
+        "period": "P2",
+        "start": "09:10",
+        "end": "09:50",
+        "subject": "English",
+        "teacher_code": "T_ENG3",
+        "venue": "Room_202",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 280.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "10A",
+        "period": "P3",
+        "start": "10:05",
+        "end": "10:45",
+        "subject": "Hindi",
+        "teacher_code": "T_HIN3",
+        "venue": "Room_202",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 360.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "10A",
+        "period": "P4",
+        "start": "10:45",
+        "end": "11:25",
+        "subject": "Science",
+        "teacher_code": "T_SCI3",
+        "venue": "Room_202",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 395.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "10A",
+        "period": "P5",
+        "start": "12:00",
+        "end": "12:40",
+        "subject": "Social Studies",
+        "teacher_code": "T_SST3",
+        "venue": "Room_202",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 340.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "10A",
+        "period": "P6",
+        "start": "12:40",
+        "end": "13:20",
+        "subject": "Physical Education",
+        "teacher_code": "T_PE2",
+        "venue": "Ground_A",
+        "label": "banned",
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_ids": [
+          "r-017"
+        ],
+        "pm25": 260.0,
+        "is_outdoor": true
+      },
+      {
+        "class": "10A",
+        "period": "P7",
+        "start": "13:25",
+        "end": "14:05",
+        "subject": "Mathematics",
+        "teacher_code": "T_MATH3",
+        "venue": "Room_202",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 140.0,
+        "is_outdoor": false
+      },
+      {
+        "class": "10A",
+        "period": "P8",
+        "start": "14:05",
+        "end": "14:45",
+        "subject": "Library",
+        "teacher_code": "T_LIB2",
+        "venue": "Reading_Room",
+        "label": "allowed",
+        "reason": "Indoor period; safe under current directives",
+        "rule_ids": [],
+        "pm25": 95.0,
+        "is_outdoor": false
+      }
+    ],
+    "input_conflicts": [],
+    "decision_trace": [
+      {
+        "class": "6A",
+        "period": "P3",
+        "subject": "Physical Education",
+        "label": "banned",
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_ids": [
+          "r-017"
+        ],
+        "forecast_pm25": {
+          "nominal": 360.0,
+          "pessimistic": 432.0
+        },
+        "candidates": [
+          {
+            "period": "P1",
+            "subject": "English",
+            "forecast_pm25": {
+              "nominal": 210.0,
+              "pessimistic": 252.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P2",
+            "subject": "Mathematics",
+            "forecast_pm25": {
+              "nominal": 280.0,
+              "pessimistic": 336.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P4",
+            "subject": "Science",
+            "forecast_pm25": {
+              "nominal": 395.0,
+              "pessimistic": 474.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "locked period"
+            ]
+          },
+          {
+            "period": "P5",
+            "subject": "Hindi",
+            "forecast_pm25": {
+              "nominal": 340.0,
+              "pessimistic": 408.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P6",
+            "subject": "Social Studies",
+            "forecast_pm25": {
+              "nominal": 260.0,
+              "pessimistic": 312.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P7",
+            "subject": "Art",
+            "forecast_pm25": {
+              "nominal": 140.0,
+              "pessimistic": 168.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P8",
+            "subject": "Library",
+            "forecast_pm25": {
+              "nominal": 95.0,
+              "pessimistic": 114.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          }
+        ],
+        "outcome": {
+          "plan": "B",
+          "activity": "Table Tennis Inter-House League",
+          "why": "no candidate period passed every hard constraint"
+        }
+      },
+      {
+        "class": "7A",
+        "period": "P2",
+        "subject": "Physical Education",
+        "label": "banned",
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_ids": [
+          "r-017"
+        ],
+        "forecast_pm25": {
+          "nominal": 280.0,
+          "pessimistic": 336.0
+        },
+        "candidates": [
+          {
+            "period": "P1",
+            "subject": "Mathematics",
+            "forecast_pm25": {
+              "nominal": 210.0,
+              "pessimistic": 252.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P3",
+            "subject": "Science",
+            "forecast_pm25": {
+              "nominal": 360.0,
+              "pessimistic": 432.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P4",
+            "subject": "English",
+            "forecast_pm25": {
+              "nominal": 395.0,
+              "pessimistic": 474.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P5",
+            "subject": "Social Studies",
+            "forecast_pm25": {
+              "nominal": 340.0,
+              "pessimistic": 408.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P6",
+            "subject": "Hindi",
+            "forecast_pm25": {
+              "nominal": 260.0,
+              "pessimistic": 312.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P7",
+            "subject": "Computer",
+            "forecast_pm25": {
+              "nominal": 140.0,
+              "pessimistic": 168.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "locked period"
+            ]
+          },
+          {
+            "period": "P8",
+            "subject": "Music",
+            "forecast_pm25": {
+              "nominal": 95.0,
+              "pessimistic": 114.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          }
+        ],
+        "outcome": {
+          "plan": "B",
+          "activity": "Indoor Calisthenics & Core Conditioning",
+          "why": "no candidate period passed every hard constraint"
+        }
+      },
+      {
+        "class": "7B",
+        "period": "P2",
+        "subject": "Physical Education",
+        "label": "banned",
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_ids": [
+          "r-017"
+        ],
+        "forecast_pm25": {
+          "nominal": 280.0,
+          "pessimistic": 336.0
+        },
+        "candidates": [
+          {
+            "period": "P1",
+            "subject": "Hindi",
+            "forecast_pm25": {
+              "nominal": 210.0,
+              "pessimistic": 252.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P3",
+            "subject": "Mathematics",
+            "forecast_pm25": {
+              "nominal": 360.0,
+              "pessimistic": 432.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P4",
+            "subject": "Social Studies",
+            "forecast_pm25": {
+              "nominal": 395.0,
+              "pessimistic": 474.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P5",
+            "subject": "Science",
+            "forecast_pm25": {
+              "nominal": 340.0,
+              "pessimistic": 408.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P6",
+            "subject": "English",
+            "forecast_pm25": {
+              "nominal": 260.0,
+              "pessimistic": 312.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P7",
+            "subject": "Library",
+            "forecast_pm25": {
+              "nominal": 140.0,
+              "pessimistic": 168.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P8",
+            "subject": "Art",
+            "forecast_pm25": {
+              "nominal": 95.0,
+              "pessimistic": 114.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          }
+        ],
+        "outcome": {
+          "plan": "B",
+          "activity": "Skipping & Agility Ladder Circuit",
+          "why": "no candidate period passed every hard constraint"
+        }
+      },
+      {
+        "class": "8A",
+        "period": "P4",
+        "subject": "Physical Education",
+        "label": "banned",
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_ids": [
+          "r-017"
+        ],
+        "forecast_pm25": {
+          "nominal": 395.0,
+          "pessimistic": 474.0
+        },
+        "candidates": [
+          {
+            "period": "P1",
+            "subject": "Science",
+            "forecast_pm25": {
+              "nominal": 210.0,
+              "pessimistic": 252.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P2",
+            "subject": "Social Studies",
+            "forecast_pm25": {
+              "nominal": 280.0,
+              "pessimistic": 336.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P3",
+            "subject": "English",
+            "forecast_pm25": {
+              "nominal": 360.0,
+              "pessimistic": 432.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P5",
+            "subject": "Mathematics",
+            "forecast_pm25": {
+              "nominal": 340.0,
+              "pessimistic": 408.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P6",
+            "subject": "Sanskrit",
+            "forecast_pm25": {
+              "nominal": 260.0,
+              "pessimistic": 312.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P7",
+            "subject": "Computer",
+            "forecast_pm25": {
+              "nominal": 140.0,
+              "pessimistic": 168.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P8",
+            "subject": "Crafts",
+            "forecast_pm25": {
+              "nominal": 95.0,
+              "pessimistic": 114.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          }
+        ],
+        "outcome": {
+          "plan": "B",
+          "activity": "Table Tennis Inter-House League",
+          "why": "no candidate period passed every hard constraint"
+        }
+      },
+      {
+        "class": "9A",
+        "period": "P5",
+        "subject": "Physical Education",
+        "label": "banned",
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_ids": [
+          "r-017"
+        ],
+        "forecast_pm25": {
+          "nominal": 340.0,
+          "pessimistic": 408.0
+        },
+        "candidates": [
+          {
+            "period": "P1",
+            "subject": "Physics",
+            "forecast_pm25": {
+              "nominal": 210.0,
+              "pessimistic": 252.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "locked period"
+            ]
+          },
+          {
+            "period": "P2",
+            "subject": "Chemistry",
+            "forecast_pm25": {
+              "nominal": 280.0,
+              "pessimistic": 336.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "locked period"
+            ]
+          },
+          {
+            "period": "P3",
+            "subject": "Mathematics",
+            "forecast_pm25": {
+              "nominal": 360.0,
+              "pessimistic": 432.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P4",
+            "subject": "English",
+            "forecast_pm25": {
+              "nominal": 395.0,
+              "pessimistic": 474.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P6",
+            "subject": "Biology",
+            "forecast_pm25": {
+              "nominal": 260.0,
+              "pessimistic": 312.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P7",
+            "subject": "History",
+            "forecast_pm25": {
+              "nominal": 140.0,
+              "pessimistic": 168.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P8",
+            "subject": "Economics",
+            "forecast_pm25": {
+              "nominal": 95.0,
+              "pessimistic": 114.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          }
+        ],
+        "outcome": {
+          "plan": "B",
+          "activity": "Table Tennis & Badminton Footwork Drills",
+          "why": "no candidate period passed every hard constraint"
+        }
+      },
+      {
+        "class": "10A",
+        "period": "P6",
+        "subject": "Physical Education",
+        "label": "banned",
+        "reason": "Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.",
+        "rule_ids": [
+          "r-017"
+        ],
+        "forecast_pm25": {
+          "nominal": 260.0,
+          "pessimistic": 312.0
+        },
+        "candidates": [
+          {
+            "period": "P1",
+            "subject": "Mathematics",
+            "forecast_pm25": {
+              "nominal": 210.0,
+              "pessimistic": 252.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P2",
+            "subject": "English",
+            "forecast_pm25": {
+              "nominal": 280.0,
+              "pessimistic": 336.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P3",
+            "subject": "Hindi",
+            "forecast_pm25": {
+              "nominal": 360.0,
+              "pessimistic": 432.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P4",
+            "subject": "Science",
+            "forecast_pm25": {
+              "nominal": 395.0,
+              "pessimistic": 474.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P5",
+            "subject": "Social Studies",
+            "forecast_pm25": {
+              "nominal": 340.0,
+              "pessimistic": 408.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P7",
+            "subject": "Mathematics",
+            "forecast_pm25": {
+              "nominal": 140.0,
+              "pessimistic": 168.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          },
+          {
+            "period": "P8",
+            "subject": "Library",
+            "forecast_pm25": {
+              "nominal": 95.0,
+              "pessimistic": 114.0
+            },
+            "verdict": "rejected",
+            "reasons": [
+              "nominal forecast: banned (Stage III order: All outdoor sports and physical education activities in schools shall remain strictly suspended under Stage III of GRAP.)"
+            ]
+          }
+        ],
+        "outcome": {
+          "plan": "B",
+          "activity": "Yoga & Mobility Session",
+          "why": "no candidate period passed every hard constraint"
+        }
+      }
+    ],
+    "revalidation": {
+      "new_conflicts_found": 0,
+      "swaps_reverted": []
+    }
+  },
+  "receipt_id": "demo-sample-receipt",
+  "approval": null,
+  "notices": {
+    "english": {
+      "audience": "parents",
+      "language": "english",
+      "notice_text": "Dear Parents, In compliance with GRAP Stage III directives, outdoor sports and physical education today are replaced by indoor physical sessions (yoga, table tennis, fitness circuits) so children stay active away from polluted air.",
+      "whatsapp_click_to_share_url": "https://api.whatsapp.com/send?text=Dear%20Parents%2C%20In%20compliance%20with%20GRAP%20Stage%20III%20directives%2C%20outdoor%20sports%20and%20physical%20education%20today%20are%20replaced%20by%20indoor%20physical%20sessions%20%28yoga%2C%20table%20tennis%2C%20fitness%20circuits%29%20so%20children%20stay%20active%20away%20from%20polluted%20air.",
+      "verify_url": null,
+      "facts": {
+        "periods_moved": 0,
+        "periods_replaced_indoor": 6,
+        "pe_minutes_scheduled": 240,
+        "pe_minutes_kept_active": 240,
+        "modelled_exposure_reduction_pct": 100.0,
+        "indoor_air_reduction_pct_modelled": null,
+        "classes_with_stricter_limits": 0,
+        "exposure_averted_ug_m3_min_modelled": null
+      },
+      "model_used": "STATIC_TEMPLATE_FALLBACK",
+      "fallback_used": true,
+      "model_id": null,
+      "model_provider": null,
+      "primary_error": "BedrockUnavailable",
+      "template_id": "static:english:parents_plan_b",
+      "fallback_reason": "model_unavailable",
+      "rejected_reasons": [],
+      "rejected_text_sha256": null,
+      "prompt_sha256": null,
+      "prompt_template_id": null,
+      "inference_config": null,
+      "text_sha256": "ddeec93b80e68f2dd76ea350cd9b3ade72e747d579021f0c3bbaaeab40e84688"
+    },
+    "hindi": {
+      "audience": "parents",
+      "language": "hindi",
+      "notice_text": "आदरणीय अभिभावक, ग्रैप स्टेज III के निर्देशों के अनुसार, आज खेल-कूद की बाहरी गतिविधियों की जगह इनडोर शारीरिक सत्र (योग, टेबल टेनिस, व्यायाम) होंगे, ताकि बच्चे प्रदूषित हवा से दूर सक्रिय रहें।",
+      "whatsapp_click_to_share_url": "https://api.whatsapp.com/send?text=%E0%A4%86%E0%A4%A6%E0%A4%B0%E0%A4%A3%E0%A5%80%E0%A4%AF%20%E0%A4%85%E0%A4%AD%E0%A4%BF%E0%A4%AD%E0%A4%BE%E0%A4%B5%E0%A4%95%2C%20%E0%A4%97%E0%A5%8D%E0%A4%B0%E0%A5%88%E0%A4%AA%20%E0%A4%B8%E0%A5%8D%E0%A4%9F%E0%A5%87%E0%A4%9C%20III%20%E0%A4%95%E0%A5%87%20%E0%A4%A8%E0%A4%BF%E0%A4%B0%E0%A5%8D%E0%A4%A6%E0%A5%87%E0%A4%B6%E0%A5%8B%E0%A4%82%20%E0%A4%95%E0%A5%87%20%E0%A4%85%E0%A4%A8%E0%A5%81%E0%A4%B8%E0%A4%BE%E0%A4%B0%2C%20%E0%A4%86%E0%A4%9C%20%E0%A4%96%E0%A5%87%E0%A4%B2-%E0%A4%95%E0%A5%82%E0%A4%A6%20%E0%A4%95%E0%A5%80%20%E0%A4%AC%E0%A4%BE%E0%A4%B9%E0%A4%B0%E0%A5%80%20%E0%A4%97%E0%A4%A4%E0%A4%BF%E0%A4%B5%E0%A4%BF%E0%A4%A7%E0%A4%BF%E0%A4%AF%E0%A5%8B%E0%A4%82%20%E0%A4%95%E0%A5%80%20%E0%A4%9C%E0%A4%97%E0%A4%B9%20%E0%A4%87%E0%A4%A8%E0%A4%A1%E0%A5%8B%E0%A4%B0%20%E0%A4%B6%E0%A4%BE%E0%A4%B0%E0%A5%80%E0%A4%B0%E0%A4%BF%E0%A4%95%20%E0%A4%B8%E0%A4%A4%E0%A5%8D%E0%A4%B0%20%28%E0%A4%AF%E0%A5%8B%E0%A4%97%2C%20%E0%A4%9F%E0%A5%87%E0%A4%AC%E0%A4%B2%20%E0%A4%9F%E0%A5%87%E0%A4%A8%E0%A4%BF%E0%A4%B8%2C%20%E0%A4%B5%E0%A5%8D%E0%A4%AF%E0%A4%BE%E0%A4%AF%E0%A4%BE%E0%A4%AE%29%20%E0%A4%B9%E0%A5%8B%E0%A4%82%E0%A4%97%E0%A5%87%2C%20%E0%A4%A4%E0%A4%BE%E0%A4%95%E0%A4%BF%20%E0%A4%AC%E0%A4%9A%E0%A5%8D%E0%A4%9A%E0%A5%87%20%E0%A4%AA%E0%A5%8D%E0%A4%B0%E0%A4%A6%E0%A5%82%E0%A4%B7%E0%A4%BF%E0%A4%A4%20%E0%A4%B9%E0%A4%B5%E0%A4%BE%20%E0%A4%B8%E0%A5%87%20%E0%A4%A6%E0%A5%82%E0%A4%B0%20%E0%A4%B8%E0%A4%95%E0%A5%8D%E0%A4%B0%E0%A4%BF%E0%A4%AF%20%E0%A4%B0%E0%A4%B9%E0%A5%87%E0%A4%82%E0%A5%A4",
+      "verify_url": null,
+      "facts": {
+        "periods_moved": 0,
+        "periods_replaced_indoor": 6,
+        "pe_minutes_scheduled": 240,
+        "pe_minutes_kept_active": 240,
+        "modelled_exposure_reduction_pct": 100.0,
+        "indoor_air_reduction_pct_modelled": null,
+        "classes_with_stricter_limits": 0,
+        "exposure_averted_ug_m3_min_modelled": null
+      },
+      "model_used": "STATIC_TEMPLATE_FALLBACK",
+      "fallback_used": true,
+      "model_id": null,
+      "model_provider": null,
+      "primary_error": "BedrockUnavailable",
+      "template_id": "static:hindi:parents_plan_b",
+      "fallback_reason": "model_unavailable",
+      "rejected_reasons": [],
+      "rejected_text_sha256": null,
+      "prompt_sha256": null,
+      "prompt_template_id": null,
+      "inference_config": null,
+      "text_sha256": "14acbcde1df8a3fbd1294d384a01d7d7ab9f005496d9bc2a93b430de2a7fec5a"
+    },
+    "teacher": {
+      "audience": "teachers",
+      "language": "english",
+      "notice_text": "Notice to Teachers: Today's timetable (2026-10-12) has been updated under GRAP Stage III. PE staff: please run the assigned indoor physical sessions in the indoor venues listed in today's plan.",
+      "whatsapp_click_to_share_url": "https://api.whatsapp.com/send?text=Notice%20to%20Teachers%3A%20Today%27s%20timetable%20%282026-10-12%29%20has%20been%20updated%20under%20GRAP%20Stage%20III.%20PE%20staff%3A%20please%20run%20the%20assigned%20indoor%20physical%20sessions%20in%20the%20indoor%20venues%20listed%20in%20today%27s%20plan.",
+      "verify_url": null,
+      "facts": {
+        "periods_moved": 0,
+        "periods_replaced_indoor": 6,
+        "pe_minutes_scheduled": 240,
+        "pe_minutes_kept_active": 240,
+        "modelled_exposure_reduction_pct": 100.0,
+        "indoor_air_reduction_pct_modelled": null,
+        "classes_with_stricter_limits": 0,
+        "exposure_averted_ug_m3_min_modelled": null
+      },
+      "model_used": "STATIC_TEMPLATE_FALLBACK",
+      "fallback_used": true,
+      "model_id": null,
+      "model_provider": null,
+      "primary_error": "BedrockUnavailable",
+      "template_id": "static:english:teachers",
+      "fallback_reason": "model_unavailable",
+      "rejected_reasons": [],
+      "rejected_text_sha256": null,
+      "prompt_sha256": null,
+      "prompt_template_id": null,
+      "inference_config": null,
+      "text_sha256": "e269e2ae7093ed1c3effaf11044c81d266afba327bc930fde0d9b46b501565f6"
+    }
+  }
+}

@@ -14,6 +14,7 @@ from typing import Any, Dict
 import boto3
 
 from services.audit.store import append_audit
+from services.workflow.approval_notify import send_approval_notification
 from services.workflow.decision_store import decision_key, parse_decision_id
 from services.workflow.token_store import issue_token
 
@@ -50,11 +51,27 @@ def request_approval_handler(event: Dict[str, Any], context: Any) -> Dict[str, A
             ":p": {"short_id": issued["short_id"], "role": role, "expires_at": issued["expires_at"]},
         },
     )
+
+    public_base_url = os.environ.get("PUBLIC_BASE_URL", "https://api.saans.local/Prod")
+    topic_arn = os.environ.get("APPROVAL_TOPIC_ARN")
+    sms_to = os.environ.get("APPROVAL_SMS_TO")
+    notified = send_approval_notification(
+        boto3.client("sns"),
+        topic_arn=topic_arn,
+        decision_id=decision_id,
+        role=role,
+        short_id=issued["short_id"],
+        public_base_url=public_base_url,
+        expires_in_seconds=APPROVAL_TIMEOUT_SECONDS,
+        sms_to=sms_to,
+    )
+
     # The short ID is a live credential: it goes to the Brief, never into logs or the audit chain.
     append_audit(table, tenant_id, "workflow", "APPROVAL_REQUESTED",
-                 {"decision_id": decision_id, "awaiting_role": role, "expires_at": issued["expires_at"]},
+                 {"decision_id": decision_id, "awaiting_role": role, "expires_at": issued["expires_at"],
+                  "notification_sent": notified["sent"]},
                  idempotency_key=f"{event['execution']}#APPROVAL_REQUESTED#{role}" if event.get("execution") else None)
     # Never log the task token.
-    logger.info("Approval requested decision=%s role=%s expires_at=%s",
-                decision_id, role, issued["expires_at"])
-    return {"decision_id": decision_id, "role": role, "expires_at": issued["expires_at"]}
+    logger.info("Approval requested decision=%s role=%s expires_at=%s notification_sent=%s",
+                decision_id, role, issued["expires_at"], notified["sent"])
+    return {"decision_id": decision_id, "role": role, "expires_at": issued["expires_at"], "notified": notified["sent"]}

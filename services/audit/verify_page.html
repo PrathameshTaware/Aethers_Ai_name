@@ -46,6 +46,7 @@
   <p class="muted">Your browser downloads the school's audit log and recomputes every SHA-256 hash itself. It does not trust the server's answer.</p>
   <div id="verdict" class="verdict" role="status">Checking…</div>
   <div class="meta" id="meta"></div>
+  <div id="anchor" class="muted" style="margin: 8px 0 12px; font-size: 13px;"></div>
   <section class="check" aria-labelledby="check-title">
     <h2 id="check-title">Check a notice you received</h2>
     <p class="muted">Paste the WhatsApp message. Your browser hashes it and looks for that exact text in the school's log. Nothing is sent anywhere.</p>
@@ -80,6 +81,7 @@
 
   const original = JSON.parse(JSON.stringify(receipt.blocks));
   const mine = new Set(receipt.decisionSequences);
+  const anchorBySeq = new Map((receipt.anchor?.anchors || []).map((a) => [a.seq, a.hash]));
 
   async function verify(blocks) {
     let prev = receipt.genesisHash, firstBad = null;
@@ -93,6 +95,9 @@
                                     sequence: b.sequence, timestamp: b.timestamp });
       if (await sha256(prev + body) !== b.hash) problems.push("row hash does not match its contents");
       if (b.payloadJson != null && await sha256(b.payloadJson) !== b.payloadDigest) problems.push("payload was changed after it was recorded");
+      if (anchorBySeq.has(b.sequence) && b.hash !== anchorBySeq.get(b.sequence)) {
+        problems.push("row hash does not match S3 anchor (" + anchorBySeq.get(b.sequence) + ")");
+      }
       if (problems.length && firstBad === null) firstBad = b.sequence;
       results.push(problems);
       prev = b.hash;
@@ -138,6 +143,27 @@
     });
     if (outcome.firstBad === null) setVerdict(true, "✓ Valid: all " + blocks.length + " records recomputed in your browser and the chain is unbroken.");
     else setVerdict(false, "✕ Broken at record #" + outcome.firstBad + ": the log was changed after it was written.");
+
+    if ($("anchor")) {
+      if (receipt.anchor && receipt.anchor.anchors) {
+        const a = receipt.anchor;
+        const mismatch = a.anchors.find((x) => {
+          const b = blocks.find((blk) => blk.sequence === x.seq);
+          return b && b.hash !== x.hash;
+        });
+        if (mismatch) {
+          $("anchor").textContent = "✕ S3 anchor mismatch at record #" + mismatch.seq;
+        } else if (a.latest) {
+          $("anchor").textContent = "✓ S3 Object Lock: record #" + a.latest.seq + " locked (" + (a.latest.lockMode || "COMPLIANCE") + ")";
+        } else if (a.anchors.length > 0) {
+          $("anchor").textContent = "S3 Object Lock: " + a.anchors.length + " anchor(s) recorded";
+        } else {
+          $("anchor").textContent = "S3 Object Lock: not yet anchored";
+        }
+      } else {
+        $("anchor").textContent = "";
+      }
+    }
   }
 
   const payloadOf = (b) => { try { return b.payloadJson ? JSON.parse(b.payloadJson) : null; } catch (e) { return null; } };

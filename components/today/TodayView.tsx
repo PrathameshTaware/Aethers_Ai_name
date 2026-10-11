@@ -51,6 +51,20 @@ export function TodayView() {
   const keyMissing = err?.code === 'admin_key_missing';
   const noDecision = err?.status === 404;
 
+  const sample = useQuery({
+    queryKey: ['demo_brief'],
+    queryFn: async () => {
+      const res = await fetch('/snapshot/demo_brief.json');
+      if (!res.ok) throw new Error('Demo brief not found');
+      return (await res.json()) as Decision;
+    },
+    enabled: keyMissing,
+    retry: false,
+  });
+
+  const isSample = keyMissing && !!sample.data;
+  const d = isSample ? sample.data : decision.data;
+
   const start = useMutation({
     mutationFn: () => api.startRun({ date: date! }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['decision', date] }),
@@ -64,29 +78,27 @@ export function TodayView() {
   }, [planning, qc, date]);
   useEffect(() => start.reset(), [date]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const d = decision.data;
-
   return (
     <div className="wrap pb-10 pt-10">
       <Reveal>
-        <div className="flex flex-wrap items-end justify-between gap-6 border-b-2 border-ink pb-6">
+        <div className="flex flex-wrap items-end justify-between gap-4 sm:gap-6 border-b-2 border-ink pb-6">
           <div>
             <p className="label mb-2 flex items-center gap-2">
-              Principal&rsquo;s brief · GET /decisions <span className="chip chip-saffron">Demo mode</span>
+              Principal&rsquo;s brief · GET /decisions <span className="chip chip-saffron">{isSample ? 'Sample mode' : 'Demo mode'}</span>
             </p>
-            <h1 className="display text-[clamp(2.4rem,6vw,4.4rem)]">
+            <h1 className="display text-[clamp(2rem,6vw,4.4rem)]">
               A person <em className="font-normal text-[#9a5200]">decides</em>.
             </h1>
           </div>
           <div className="flex items-center gap-1" role="group" aria-label="School day">
-            <button type="button" className="btn btn-quiet size-11 !px-0" onClick={() => date && setDate(addDays(date, -1))} aria-label="Previous day">
+            <button type="button" className="btn btn-quiet size-9 sm:size-11 !px-0" onClick={() => date && setDate(addDays(date, -1))} aria-label="Previous day">
               <ChevronLeft className="size-5" />
             </button>
-            <div className="min-w-[150px] text-center">
+            <div className="min-w-[120px] sm:min-w-[150px] text-center">
               <p className="label">School day</p>
-              <p className="display text-[24px]">{date ? fmtDate(date) : '…'}</p>
+              <p className="display text-[20px] sm:text-[24px]">{date ? fmtDate(date) : '…'}</p>
             </div>
-            <button type="button" className="btn btn-quiet size-11 !px-0" onClick={() => date && setDate(addDays(date, 1))} aria-label="Next day">
+            <button type="button" className="btn btn-quiet size-9 sm:size-11 !px-0" onClick={() => date && setDate(addDays(date, 1))} aria-label="Next day">
               <ChevronRight className="size-5" />
             </button>
           </div>
@@ -95,14 +107,27 @@ export function TodayView() {
 
       <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
         <div className="min-w-0 space-y-8">
-          {keyMissing ? (
+          {keyMissing && sample.isPending ? (
+            <div className="loading-sweep h-72 rounded-md bg-paper-2" aria-label="Loading sample brief" />
+          ) : keyMissing && !isSample ? (
             <SetupCard />
-          ) : !date || decision.isPending ? (
+          ) : !date || (decision.isPending && !keyMissing) ? (
             <div className="loading-sweep h-72 rounded-md bg-paper-2" aria-label="Loading the brief" />
           ) : d ? (
             <>
+              {isSample && (
+                <div className="sheet-2 flex flex-wrap items-center justify-between gap-3 p-4 text-[14px]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="chip chip-saffron">Read-only sample brief</span>
+                    <span className="text-ink-soft">
+                      Admin key not configured on this server. Showing a verified sample brief generated from the workflow.
+                    </span>
+                  </div>
+                  <span className="text-xs text-ink-soft">Notice links point to demo receipt</span>
+                </div>
+              )}
               <Stepper decision={d} />
-              <DecisionCard decision={d} date={date} onChanged={() => qc.invalidateQueries({ queryKey: ['decision', date] })} />
+              <DecisionCard decision={d} date={date ?? '2026-10-12'} onChanged={() => qc.invalidateQueries({ queryKey: ['decision', date] })} />
               {d.notices
                 ? <Notices notices={d.notices} receiptId={d.receipt_id} />
                 : phaseOf(d) === 'approved' && (
@@ -238,7 +263,7 @@ function Stepper({ decision }: { decision: Decision }) {
           ? (nobodyAsked ? 'Closed: no change needed' : phase === 'approved' ? 'Approved' : 'Fail-safe: nothing sent')
           : s.label;
         return (
-          <li key={s.id} className="relative pr-3">
+          <li key={s.id} className="relative pr-1 sm:pr-3">
             <span className="absolute left-0 right-0 top-[13px] h-0.5 bg-(--rule-strong)" aria-hidden />
             <motion.span
               className={cn('absolute left-0 top-[13px] h-0.5', phase === 'failsafe' && i === 3 ? 'bg-saffron' : 'bg-breath')}
@@ -249,17 +274,17 @@ function Stepper({ decision }: { decision: Decision }) {
             />
             <span
               className={cn(
-                'relative grid size-7 place-items-center rounded-full border-[1.5px] bg-paper font-mono text-[12px]',
+                'relative grid size-6 sm:size-7 place-items-center rounded-full border-[1.5px] bg-paper font-mono text-[11px] sm:text-[12px]',
                 done ? (phase === 'failsafe' && i === 3 ? 'border-ink bg-saffron text-ink' : 'border-breath-ink bg-breath text-white')
                   : active ? 'border-ink text-ink' : 'border-(--rule-strong) text-ink-soft',
               )}
             >
-              {done ? <Check className="size-3.5" /> : active ? <BreathRing size={12} /> : skip ? '–' : i + 1}
+              {done ? <Check className="size-3 sm:size-3.5" /> : active ? <BreathRing size={12} /> : skip ? '–' : i + 1}
             </span>
-            <span className={cn('mt-2 block text-[13px] leading-tight', done || active ? 'font-semibold' : 'text-ink-soft')} aria-current={active ? 'step' : undefined}>
+            <span className={cn('mt-2 block text-[11px] sm:text-[13px] leading-tight break-words', done || active ? 'font-semibold' : 'text-ink-soft')} aria-current={active ? 'step' : undefined}>
               {label}
             </span>
-            {(i === 1 || i === 2) && <span className="num block text-[11px] text-ink-soft">{skip ? 'not needed' : '60 s'}</span>}
+            {(i === 1 || i === 2) && <span className="num block text-[10px] sm:text-[11px] text-ink-soft">{skip ? 'not needed' : '60 s'}</span>}
           </li>
         );
       })}
@@ -332,13 +357,13 @@ function DecisionCard({ decision: d, date, onChanged }: { decision: Decision; da
         </header>
 
         {plan && (
-          <dl className="mt-6 grid grid-cols-3 divide-x divide-(--rule) border-y border-(--rule-strong)">
+          <dl className="mt-6 grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-(--rule) border-y border-(--rule-strong)">
             {[
               ['Moved to a cleaner slot', plan.plan_a.length, 'periods'],
               ['Replaced indoors', plan.plan_b.length, 'periods'],
               ['PE minutes kept', plan.pe_minutes?.kept_active ?? 0, `of ${plan.pe_minutes?.scheduled ?? 0}`],
             ].map(([label, value, unit]) => (
-              <div key={label as string} className="px-4 py-4 first:pl-0">
+              <div key={label as string} className="px-4 py-4 first:pl-0 sm:first:pl-0">
                 <dt className="label">{label}</dt>
                 <dd className="mt-1 flex items-baseline gap-2">
                   <span className="text-[40px] font-medium leading-none"><CountUp value={value as number} /></span>
@@ -449,8 +474,8 @@ function Notices({ notices, receiptId }: { notices: NonNullable<Decision['notice
   return (
     <Reveal now>
       <section className="grid items-start gap-8 md:grid-cols-[auto_1fr]" aria-label="Drafted notices">
-        <div className="tilt-scene justify-self-center">
-          <motion.div className="phone" initial={{ rotateY: -18, rotateX: 6 }} whileInView={{ rotateY: -6, rotateX: 2 }} whileHover={{ rotateY: 0, rotateX: 0 }} viewport={{ once: true }} transition={{ type: 'spring', stiffness: 120, damping: 18 }}>
+        <div className="tilt-scene justify-self-center max-w-full overflow-hidden sm:overflow-visible">
+          <motion.div className="phone max-w-[calc(100vw-2.5rem)] sm:max-w-[340px]" initial={{ rotateY: -18, rotateX: 6 }} whileInView={{ rotateY: -6, rotateX: 2 }} whileHover={{ rotateY: 0, rotateX: 0 }} viewport={{ once: true }} transition={{ type: 'spring', stiffness: 120, damping: 18 }}>
             <div className="phone-screen flex flex-col">
               <div className="flex items-center gap-2 bg-breath-ink px-4 py-3 text-white">
                 <span className="grid size-8 place-items-center rounded-full bg-white/20 text-[13px] font-semibold">S</span>

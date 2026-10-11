@@ -21,9 +21,12 @@ from services.common.http import ApiError, guarded, json_body, respond
 from services.workflow.decision_store import decision_key
 from services.workflow.token_store import consume_token, is_valid_short_id, release_token
 
+from pathlib import Path
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+APPROVE_PAGE = Path(__file__).with_name("approve_page.html")
 ACTIONS = ("APPROVE_PLAN_A", "APPROVE_PLAN_B", "REJECT")
 # Errors meaning the execution is no longer waiting on this token (timed out / escalated / finished).
 CLOSED_WINDOW_ERRORS = ("TaskTimedOut", "InvalidToken", "TaskDoesNotExist")
@@ -38,7 +41,25 @@ def _sfn():
 
 
 @guarded
+def approve_page_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    short_id = (event.get("pathParameters") or {}).get("shortId")
+    if not is_valid_short_id(short_id):
+        raise ApiError(400, "invalid_short_id", "Approval link is malformed.")
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "text/html; charset=utf-8",
+            "Content-Security-Policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'",
+        },
+        "body": APPROVE_PAGE.read_text(encoding="utf-8"),
+    }
+
+
+@guarded
 def approval_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    if event.get("httpMethod") == "GET":
+        return approve_page_handler(event, context)
+
     short_id = (event.get("pathParameters") or {}).get("shortId")
     if not is_valid_short_id(short_id):
         raise ApiError(400, "invalid_short_id", "Approval link is malformed.")

@@ -21,10 +21,12 @@ const PER_GROUP = 5;
  */
 export function SchoolScene({ stage, outdoorClasses, className }: SchoolSceneProps) {
   const mount = useRef<HTMLDivElement>(null);
+  const requestRenderRef = useRef<() => void>(() => {});
   // The render loop reads the latest props from here without being torn down and rebuilt.
   const live = useRef({ haze: stageByNumber(stage).haze, outdoor: outdoorClasses });
   useEffect(() => {
     live.current = { haze: stageByNumber(stage).haze, outdoor: outdoorClasses };
+    requestRenderRef.current();
   }, [stage, outdoorClasses]);
 
   useEffect(() => {
@@ -54,7 +56,8 @@ export function SchoolScene({ stage, outdoorClasses, className }: SchoolScenePro
       seal: token('--color-seal'),
       saffron: token('--color-saffron'),
     };
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let reduceMotion = mq.matches;
 
     // Full resolution to start; the loop lowers it only if this machine cannot keep up (see `adapt`).
     let pixelRatio = Math.min(window.devicePixelRatio, 2);
@@ -312,8 +315,22 @@ export function SchoolScene({ stage, outdoorClasses, className }: SchoolScenePro
       slowFrames = 0;
     };
 
-    const frame = () => {
+    const onMotionChange = (e: MediaQueryListEvent) => {
+      reduceMotion = e.matches;
+      requestFrame();
+    };
+    mq.addEventListener('change', onMotionChange);
+
+    const requestFrame = () => {
+      cancelAnimationFrame(raf);
       raf = requestAnimationFrame(frame);
+    };
+    requestRenderRef.current = requestFrame;
+
+    const frame = () => {
+      if (!reduceMotion) {
+        raf = requestAnimationFrame(frame);
+      }
       if (!visible || document.hidden) {
         last = performance.now(); // resume without a jump, and without counting the pause as a slow frame
         return;
@@ -388,11 +405,13 @@ export function SchoolScene({ stage, outdoorClasses, className }: SchoolScenePro
 
     return () => {
       cancelAnimationFrame(raf);
+      mq.removeEventListener('change', onMotionChange);
+      requestRenderRef.current = () => {};
       ro.disconnect();
       io.disconnect();
       window.removeEventListener('pointermove', onPointer);
       window.removeEventListener('scroll', onScroll);
-      scene.traverse((o) => {
+      scene.traverse((o: THREE.Object3D) => {
         const mesh = o as THREE.Mesh;
         mesh.geometry?.dispose();
         const m = mesh.material;

@@ -52,6 +52,23 @@ Parameters:
     Type: String
     Default: ""
     Description: The Meta WhatsApp test number's Phone number ID.
+  AlertEmail:
+    Type: String
+    Default: ""
+    Description: Optional email address to receive CloudWatch alarms (failed executions, fail-safe runs, anchor refused).
+  ApprovalEmail:
+    Type: String
+    Default: ""
+    Description: Optional email address of the principal to receive approval links when a run pauses.
+  ApprovalSmsTo:
+    Type: String
+    Default: ""
+    Description: Optional E.164 phone number to receive approval SMS when a run pauses.
+
+Conditions:
+  HasAlertEmail: !Not [!Equals [!Ref AlertEmail, ""]]
+  HasApprovalEmail: !Not [!Equals [!Ref ApprovalEmail, ""]]
+  HasApprovalSmsTo: !Not [!Equals [!Ref ApprovalSmsTo, ""]]
 
 Globals:
   Function:
@@ -60,6 +77,7 @@ Globals:
     Timeout: 30
     MemorySize: 512
     Runtime: python3.12
+    Tracing: Active
     Environment:
       Variables:
         TABLE_NAME: !Ref SaansTable
@@ -70,6 +88,7 @@ Globals:
         # Must equal TimeoutSeconds of the approval states in services/workflow/state_machine.json
         APPROVAL_TIMEOUT_SECONDS: "60"
   Api:
+    TracingEnabled: true
     Cors:
       AllowOrigin: "'*'"
       AllowHeaders: "'Content-Type,x-saans-admin-key'"
@@ -162,6 +181,11 @@ Resources:
           Properties:
             Path: /approve/{shortId}
             Method: post
+        ApprovePageApi:
+          Type: Api
+          Properties:
+            Path: /approve/{shortId}
+            Method: get
 
   # 5. Public Receipt Verification API
   ReceiptVerifyFunction:
@@ -170,9 +194,14 @@ Resources:
       CodeUri: .lambda_src/
       Handler: services.audit.handler.receipt_handler
       Description: GET /receipts/{id} - tenant hash chain from DynamoDB for in-browser verification
+      Environment:
+        Variables:
+          ANCHOR_BUCKET: !Ref AnchorBucket
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref SaansTable
+        - S3ReadPolicy:
+            BucketName: !Ref AnchorBucket
       Events:
         ReceiptApi:
           Type: Api
@@ -317,9 +346,19 @@ Resources:
       CodeUri: .lambda_src/
       Handler: services.workflow.request.request_approval_handler
       Description: Stores the task token behind a short, role-bound, expiring approval ID
+      Environment:
+        Variables:
+          PUBLIC_BASE_URL: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+          APPROVAL_TOPIC_ARN: !Ref ApprovalTopic
+          APPROVAL_SMS_TO: !Ref ApprovalSmsTo
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref SaansTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - sns:Publish
+              Resource: "*"
 
   # 8. Principal Brief (read-only, admin key)
   DecisionsFunction:
@@ -391,12 +430,60 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref SaansTable
 
+  AnchorBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub "saans-audit-anchors-${AWS::AccountId}-${AWS::Region}"
+      ObjectLockEnabled: true
+      ObjectLockConfiguration:
+        ObjectLockEnabled: Enabled
+        Rule:
+          DefaultRetention:
+            Mode: COMPLIANCE
+            Days: 365
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  # 9b. Audit Anchor Lambda Function (nightly schedule + Object Lock)
+  AnchorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .lambda_src/
+      Handler: services.audit.anchor.anchor_handler
+      Description: Nightly anchor of tenant audit heads into S3 Object Lock bucket
+      Tracing: Active
+      Environment:
+        Variables:
+          ANCHOR_BUCKET: !Ref AnchorBucket
+          ANCHOR_TENANTS: "TENANT#demo"
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SaansTable
+        - S3CrudPolicy:
+            BucketName: !Ref AnchorBucket
+      Events:
+        NightlySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: "cron(25 18 * * ? *)"
+            Name: SaansNightlyAnchorSchedule
+            Description: Nightly audit head anchor for schools (23:55 IST)
+            Enabled: true
+
   # 10. Decision workflow: plan -> wait for principal -> escalate -> notify / fail safe
   SaansWorkflow:
     Type: AWS::Serverless::StateMachine
     Properties:
       Name: !Sub "SaansWorkflow-${AWS::StackName}"
       Type: STANDARD  # waitForTaskToken requires Standard workflows
+      Tracing:
+        Enabled: true
       DefinitionUri: ../services/workflow/state_machine.json
       DefinitionSubstitutions:
         IngestPlannerFunctionArn: !GetAtt IngestPlannerFunction.Arn
@@ -475,6 +562,98 @@ Resources:
             Path: /runs
             Method: post
 
+  # 13. Approval SNS Topic & Subscriptions
+  ApprovalTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "saans-approvals-${AWS::StackName}"
+      DisplayName: Saans Decision Approvals
+
+  ApprovalEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasApprovalEmail
+    Properties:
+      TopicArn: !Ref ApprovalTopic
+      Protocol: email
+      Endpoint: !Ref ApprovalEmail
+
+  ApprovalSmsSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasApprovalSmsTo
+    Properties:
+      TopicArn: !Ref ApprovalTopic
+      Protocol: sms
+      Endpoint: !Ref ApprovalSmsTo
+
+  # 14. Observability: CloudWatch Alarms & Alert Topic
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "saans-alerts-${AWS::StackName}"
+      DisplayName: Saans System Alerts
+
+  AlertEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasAlertEmail
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  WorkflowExecutionFailedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-workflow-failed"
+      AlarmDescription: Fires when a Saans workflow execution fails
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref SaansWorkflow
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+
+  WorkflowExecutionTimedOutAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-workflow-timed-out"
+      AlarmDescription: Fires when a Saans workflow execution times out or enters fail-safe
+      Namespace: AWS/States
+      MetricName: ExecutionsTimedOut
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref SaansWorkflow
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+
+  AnchorRefusedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-anchor-refused"
+      AlarmDescription: Fires when nightly S3 Object Lock anchor fails or refuses a tampered chain
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref AnchorFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+
 Outputs:
   StateMachineArn:
     Description: SaansWorkflow ARN
@@ -482,6 +661,18 @@ Outputs:
   TriggerFunctionName:
     Description: Start a run with aws lambda invoke --function-name <this> (idempotent per decision)
     Value: !Ref TriggerFunction
+  AnchorFunctionName:
+    Description: Name of the Lambda function that anchors the audit chain to S3
+    Value: !Ref AnchorFunction
+  AnchorBucketName:
+    Description: Name of the S3 Object Lock bucket
+    Value: !Ref AnchorBucket
+  ApprovalTopicArn:
+    Description: SNS Topic ARN for approval notifications
+    Value: !Ref ApprovalTopic
+  AlertTopicArn:
+    Description: SNS Topic ARN for CloudWatch alerts
+    Value: !Ref AlertTopic
   SaansTableArn:
     Description: DynamoDB Single Table ARN
     Value: !GetAtt SaansTable.Arn

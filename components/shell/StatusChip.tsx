@@ -90,7 +90,7 @@ export function StatusChip() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={`System status: ${mode}. Show details.`}
-        className={cn('chip cursor-pointer', tone)}
+        className={cn('chip cursor-pointer !px-2 sm:!px-3 !py-1 text-[12px] sm:text-[13px]', tone)}
       >
         <span className={cn('size-1.5 rounded-full bg-current', mode === 'LIVE' && 'animate-pulse')} />
         <span>{mode}</span>

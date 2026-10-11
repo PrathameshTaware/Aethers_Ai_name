@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saans Decision Approval</title>
+<style>
+  :root {
+    --bg:#f7f7f5; --fg:#1d1d1b; --muted:#6b6b66; --card:#ffffff; --line:#e3e3de;
+    --ok:#1f7a4d; --ok-bg:#e6f4ec; --bad:#b42318; --bad-bg:#fdecea; --saffron:#9a5200;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#151514; --fg:#ededea; --muted:#a3a39c; --card:#1f1f1d; --line:#33332f;
+      --ok:#5cc38f; --ok-bg:#163325; --bad:#ff8a7f; --bad-bg:#3a1714; --saffron:#f08c3a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui, -apple-system, sans-serif; }
+  main { max-width:540px; margin:0 auto; padding:32px 16px 48px; }
+  h1 { font-size:24px; margin:0 0 6px; }
+  p { margin:0 0 16px; color:var(--muted); font-size:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; margin-bottom:20px; }
+  .status { font-weight:600; padding:12px 16px; border-radius:8px; margin-bottom:16px; display:none; }
+  .status.ok { display:block; background:var(--ok-bg); color:var(--ok); }
+  .status.bad { display:block; background:var(--bad-bg); color:var(--bad); }
+  .meta { display:grid; grid-template-columns:max-content 1fr; gap:6px 12px; font-size:13px; margin-bottom:16px; }
+  .mono { font-family:ui-monospace, monospace; font-size:13px; }
+  .actions { display:flex; flex-direction:column; gap:10px; }
+  button {
+    font:inherit; font-weight:600; padding:12px 16px; border-radius:8px; border:1px solid var(--line);
+    cursor:pointer; transition:opacity 150ms; display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  .btn-b { background:var(--ok); color:#fff; border-color:var(--ok); }
+  .btn-a { background:var(--card); color:var(--fg); }
+  .btn-reject { background:transparent; color:var(--bad); border-color:transparent; }
+  .btn-reject:hover { background:var(--bad-bg); }
+  .notice { font-size:12.5px; color:var(--muted); margin-top:16px; text-align:center; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Decision Approval</h1>
+  <p>Take an official action for this paused decision workflow. Opening this page has not made a decision.</p>
+
+  <div id="status" class="status" role="status"></div>
+
+  <div class="card" id="formCard">
+    <div class="meta">
+      <span class="muted">Link ID</span><span class="mono" id="shortId">…</span>
+      <span class="muted">State</span><span>Awaiting human decision</span>
+    </div>
+
+    <div class="actions">
+      <button id="btnPlanB" class="btn-b" type="button">Approve Plan B (Indoor Wellness)</button>
+      <button id="btnPlanA" class="btn-a" type="button">Approve Plan A (Standard Outdoor)</button>
+      <button id="btnReject" class="btn-reject" type="button">Reject Decision (No Broadcast)</button>
+    </div>
+
+    <div class="notice">
+      Single-use security token. Once submitted, the decision is immutable and recorded in the audit trail.
+    </div>
+  </div>
+</main>
+<script>
+(() => {
+  const shortId = decodeURIComponent(location.pathname.split("/").filter(Boolean).pop() || "");
+  document.getElementById("shortId").textContent = shortId;
+  const statusEl = document.getElementById("status");
+  const buttons = [
+    { el: document.getElementById("btnPlanB"), action: "APPROVE_PLAN_B" },
+    { el: document.getElementById("btnPlanA"), action: "APPROVE_PLAN_A" },
+    { el: document.getElementById("btnReject"), action: "REJECT" },
+  ];
+
+  function setStatus(ok, msg) {
+    statusEl.className = "status " + (ok ? "ok" : "bad");
+    statusEl.textContent = msg;
+  }
+
+  async function submit(action) {
+    buttons.forEach(b => b.el.disabled = true);
+    setStatus(false, "Submitting " + action + "…");
+    statusEl.className = "status";
+    statusEl.style.display = "block";
+
+    try {
+      const res = await fetch("../approve/" + encodeURIComponent(shortId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: action })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error((data.error && data.error.message) || res.statusText);
+      }
+      setStatus(true, "✓ Action recorded: " + action + ". The workflow has resumed.");
+      document.getElementById("formCard").style.display = "none";
+    } catch (e) {
+      setStatus(false, "✕ " + e.message);
+      buttons.forEach(b => b.el.disabled = false);
+    }
+  }
+
+  buttons.forEach(({ el, action }) => {
+    el.addEventListener("click", () => submit(action));
+  });
+})();
+</script>
+</body>
+</html>

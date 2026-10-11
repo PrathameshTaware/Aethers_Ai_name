@@ -116,10 +116,10 @@ const FLOW = [
 
 const LIMITS = [
   'The forecast is modelled: CAMS data via Open-Meteo for one grid point, not a ground station.',
-  'Rules are hand-entered from one real circular. Model-based extraction is not built yet.',
-  'Notices are drafted, not delivered. Delivery is a manual WhatsApp share.',
+  'Model-based rule extraction via Bedrock is strictly verified against verbatim quotes in code.',
+  'Notices are drafted as WhatsApp click-to-share links and verified with receipts.',
   'No pilot has run with a real school, and no school or student counts are claimed.',
-  'Tamper-evident, not tamper-proof: the chain shows any edit, but we operate the database.',
+  'Immutable anchors: daily audit chain heads are locked in S3 Object Lock (Compliance mode) for 365 days.',
 ];
 
 export function HowItWorks() {

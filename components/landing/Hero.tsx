@@ -28,8 +28,8 @@ export function Hero() {
   const setStage = useUi((s) => s.setStage);
   const { t, lang } = useT();
   const meta = stageByNumber(stage);
-  // The headline stays in English; the line under it is Hindi, or Tamil when Tamil is selected.
-  const second = lang === 'ta' ? 'ta' : 'hi';
+  // The headline stays in English; the line under it is Hindi.
+  const second = 'hi';
 
   // The stage lives in the URL (/?stage=3) so a demo link opens on the right moment.
   useEffect(() => {

@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import {
-  Fraunces, Inter, JetBrains_Mono, Noto_Sans_Devanagari, Noto_Sans_Tamil, Noto_Serif_Tamil, Tiro_Devanagari_Hindi,
+  Fraunces, Inter, JetBrains_Mono, Noto_Sans_Devanagari, Tiro_Devanagari_Hindi,
 } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/shell/Providers';
@@ -13,8 +13,6 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' });
 const notoDeva = Noto_Sans_Devanagari({ subsets: ['devanagari'], variable: '--font-noto-deva' });
 const tiro = Tiro_Devanagari_Hindi({ subsets: ['devanagari'], weight: '400', variable: '--font-tiro' });
-const notoTamil = Noto_Sans_Tamil({ subsets: ['tamil'], variable: '--font-noto-tamil' });
-const serifTamil = Noto_Serif_Tamil({ subsets: ['tamil'], variable: '--font-serif-tamil' });
 
 export const metadata: Metadata = {
   title: { default: 'Saans (साँस): Bad air. Better day.', template: '%s · Saans' },
@@ -32,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${inter.variable} ${jetbrains.variable} ${notoDeva.variable} ${tiro.variable} ${notoTamil.variable} ${serifTamil.variable}`}
+      className={`${fraunces.variable} ${inter.variable} ${jetbrains.variable} ${notoDeva.variable} ${tiro.variable}`}
     >
       <body className="flex min-h-screen flex-col">
         <Providers>

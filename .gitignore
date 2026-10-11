@@ -4,6 +4,9 @@ __pycache__/
 *$py.class
 powershell.cmd
 infra/packaged.yaml
+frontend/
+.next/
+
 
 # C extensions
 *.so

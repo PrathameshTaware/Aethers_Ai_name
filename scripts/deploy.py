@@ -30,7 +30,9 @@ PARAMS = {"FALLBACK_MODEL_API_KEY": "FallbackModelApiKey", "GROQ_API_KEY": "Fall
           "TWILIO_TOKEN": "TwilioAuthToken",
           "TWILIO_WHATSAPP_FROM": "TwilioWhatsAppFrom", "DEMO_WHATSAPP_TO": "DemoWhatsAppTo",
           "TWILIO_CONTENT_SID": "TwilioContentSid", "TWILIO_CONTENT_VARIABLES": "TwilioContentVariables",
-          "META_WA_TOKEN": "MetaWaToken", "META_WA_PHONE_NUMBER_ID": "MetaWaPhoneNumberId"}
+          "META_WA_TOKEN": "MetaWaToken", "META_WA_PHONE_NUMBER_ID": "MetaWaPhoneNumberId",
+          "APPROVAL_EMAIL": "ApprovalEmail", "APPROVAL_SMS_TO": "ApprovalSmsTo",
+          "ALERT_EMAIL": "AlertEmail"}
 
 
 def read_env(path: Path) -> dict:

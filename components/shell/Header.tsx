@@ -105,14 +105,14 @@ export function Header() {
 
   return (
     <header className="no-print sticky top-0 z-40 border-b border-(--rule-strong) bg-paper/90 backdrop-blur-md">
-      <div className="wrap flex h-16 items-center justify-between gap-4">
-        <Link href="/" className="group flex items-center gap-3" aria-label="Saans home">
-          <span className="grid size-9 place-items-center text-breath">
-            <BreathRing size={26} />
+      <div className="wrap flex h-16 items-center justify-between gap-2 sm:gap-4">
+        <Link href="/" className="group flex items-center gap-2 sm:gap-3 shrink-0" aria-label="Saans home">
+          <span className="grid size-8 sm:size-9 place-items-center text-breath">
+            <BreathRing size={24} />
           </span>
-          <span className="flex items-baseline gap-2">
-            <span className="display text-[26px] leading-none">Saans</span>
-            <span lang="hi" className="display-hi text-[17px] leading-none text-ink-soft">साँस</span>
+          <span className="flex items-baseline gap-1.5 sm:gap-2">
+            <span className="display text-[22px] sm:text-[26px] leading-none">Saans</span>
+            <span lang="hi" className="display-hi hidden xs:inline text-[15px] sm:inline leading-none text-ink-soft">साँस</span>
           </span>
         </Link>
 
@@ -120,9 +120,9 @@ export function Header() {
           <ActiveNav variant="desktop" />
         </Suspense>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3">
           <IstClock />
-          <div className="flex rounded-full border border-(--rule-strong) p-0.5 text-[13px] font-medium" role="group" aria-label="Language">
+          <div className="flex rounded-full border border-(--rule-strong) p-0.5 text-[12px] sm:text-[13px] font-medium" role="group" aria-label="Language">
             {LANGS.map(({ code: l, label }) => (
               <button
                 key={l}
@@ -131,7 +131,7 @@ export function Header() {
                 aria-pressed={lang === l}
                 lang={l}
                 className={cn(
-                  'min-h-8 cursor-pointer rounded-full px-2.5 transition-colors',
+                  'min-h-7 sm:min-h-8 cursor-pointer rounded-full px-2 sm:px-2.5 transition-colors',
                   lang === l ? 'bg-ink text-paper' : 'text-ink-soft hover:text-ink',
                 )}
               >

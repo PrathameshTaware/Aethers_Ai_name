@@ -27,8 +27,8 @@
   --color-aqi-severe: #a3207b;
   --color-aqi-severe2: #6b1030;
 
-  --font-display: var(--font-fraunces), var(--font-tiro), var(--font-serif-tamil), Georgia, serif;
-  --font-sans: var(--font-inter), var(--font-noto-deva), var(--font-noto-tamil), system-ui, sans-serif;
+  --font-display: var(--font-fraunces), var(--font-tiro), Georgia, serif;
+  --font-sans: var(--font-inter), var(--font-noto-deva), system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -54,6 +54,7 @@
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 88px;
+  overflow-x: hidden;
 }
 
 body {
@@ -63,6 +64,7 @@ body {
   font-size: 17px;
   line-height: 1.55;
   min-height: 100vh;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -93,7 +95,7 @@ body {
 }
 
 .display-hi {
-  font-family: var(--font-tiro), var(--font-serif-tamil), var(--font-display);
+  font-family: var(--font-tiro), var(--font-display);
   font-weight: 400;
   line-height: 1.35;
   letter-spacing: 0;
