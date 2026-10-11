@@ -63,6 +63,8 @@ def decisions_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         "decided_at": item.get("decided_at"),
         "plan": json.loads(item["data"]) if item.get("data") else None,
         "receipt_id": item.get("receipt_id"),
+        # The drafted notice text, once the workflow has drafted it (after an approval).
+        "notices": json.loads(item["notices_json"]) if item.get("notices_json") else None,
         "approval": None,
     }
     pending = item.get("approval_pending")

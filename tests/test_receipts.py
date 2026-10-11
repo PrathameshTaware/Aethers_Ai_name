@@ -97,7 +97,7 @@ class TestReceipts(wiring.TestAuditWiring):
     # --- the browser code itself, run under Node ----------------------------------------
     @unittest.skipUnless(NODE, "node not installed")
     def test_frontend_lib_crypto_verifies_backend_chain(self):
-        """lib/crypto.ts verifyAuditChain (unchanged) accepts the real chain and flags an edited row."""
+        """lib/crypto.ts verifyChain accepts the real chain and flags an edited row."""
         blocks = self.receipt()["blocks"]
         with tempfile.TemporaryDirectory() as tmp:
             src = (ROOT / "lib/crypto.ts").read_text(encoding="utf-8")
@@ -106,17 +106,18 @@ class TestReceipts(wiring.TestAuditWiring):
             Path(tmp, "blocks.json").write_text(json.dumps(blocks), encoding="utf-8")
             Path(tmp, "run.ts").write_text("""
 import { readFileSync } from 'node:fs';
-import { verifyAuditChain } from './crypto.ts';
+import { verifyChain } from './crypto.ts';
 const blocks = JSON.parse(readFileSync(new URL('./blocks.json', import.meta.url), 'utf8'));
-const clean = await verifyAuditChain(blocks);
+const GENESIS = '0'.repeat(64);
+const clean = await verifyChain(blocks, GENESIS);
 blocks[2].actor = 'vice_principal';
-const tampered = await verifyAuditChain(blocks);
-console.log(JSON.stringify({ clean: clean.isValid, tampered: tampered.isValid, at: tampered.tamperIndex }));
+const tampered = await verifyChain(blocks, GENESIS);
+console.log(JSON.stringify({ clean: clean.firstBad === null, tampered: tampered.firstBad === null, at: tampered.firstBad }));
 """, encoding="utf-8")
             out = subprocess.run([NODE, "--experimental-strip-types", "--no-warnings", "run.ts"], cwd=tmp,
                                  capture_output=True, text=True, encoding="utf-8", timeout=60)
         self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertEqual(json.loads(out.stdout), {"clean": True, "tampered": False, "at": 2})
+        self.assertEqual(json.loads(out.stdout), {"clean": True, "tampered": False, "at": 3})  # first broken sequence
 
     @unittest.skipUnless(NODE, "node not installed")
     def test_verify_page_script_verifies_backend_chain(self):

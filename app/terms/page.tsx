@@ -1,79 +1,48 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Scale, CheckCircle2, AlertTriangle, FileText, ArrowLeft, Leaf } from 'lucide-react';
-import { MadeWithAITag } from '@/components/layout/MadeWithAITag';
+
+export const metadata: Metadata = { title: 'Terms' };
+
+const SECTIONS = [
+  {
+    h: 'A demonstration, not a service',
+    p: 'Saans runs on a demo school with a sample timetable. No pilot has run with a real school, and nothing here is live guidance for one.',
+  },
+  {
+    h: 'The order comes first',
+    p: 'Saans never declares a GRAP stage. It reads the declared stage and the rules entered from the official circular. A clean forecast can never relax a stage ban.',
+  },
+  {
+    h: 'A person decides',
+    p: 'The planner proposes. Nothing is sent without an approval from the principal or vice-principal, and with no answer the run fails safe.',
+  },
+  {
+    h: 'Modelled, not measured',
+    p: 'The forecast is CAMS model data for one grid point. Indoor air figures are planning assumptions per ventilation type. A school remains responsible for its own rooms and purifiers.',
+  },
+  {
+    h: 'Tamper-evident, not tamper-proof',
+    p: 'The hash chain shows any edit made after a row was written, and anyone can check that in a browser. It cannot stop an edit, because we operate the database.',
+  },
+];
 
 export default function TermsPage() {
   return (
-    <div className="container mx-auto px-4 md:px-6 py-12 max-w-4xl space-y-10">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#1e5646] pb-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-1.5 text-xs text-slate-200 hover:text-white px-3.5 py-1.5 rounded-full bg-[#11382d] border border-[#1e5646] transition-colors font-bold"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to AirIndx</span>
-            </Link>
-            <MadeWithAITag variant="badge" />
+    <article className="wrap max-w-[860px] pb-10 pt-12">
+      <p className="label mb-3">Terms</p>
+      <h1 className="display text-[clamp(2.4rem,6vw,4.4rem)]">What Saans does, and does not, claim.</h1>
+      <dl className="mt-10 divide-y divide-(--rule-strong) border-y-2 border-ink">
+        {SECTIONS.map((s, i) => (
+          <div key={s.h} className="grid gap-2 py-6 md:grid-cols-[56px_1fr_2fr] md:gap-6">
+            <span className="num text-[13px] text-ink-soft">{String(i + 1).padStart(2, '0')}</span>
+            <dt className="display text-[24px] leading-tight">{s.h}</dt>
+            <dd className="text-ink-soft">{s.p}</dd>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight mt-3">
-            Terms of Service & Operational Governance ⚖️
-          </h1>
-          <p className="text-sm text-slate-300 font-medium mt-2">
-            Governance Framework for Ecological Air Safety Planning (Effective Oct 2026)
-          </p>
-        </div>
-
-        <Link
-          href="/login"
-          className="btn-solar-pill text-xs px-5 py-2.5 shrink-0"
-        >
-          <span>Principal Portal 👋</span>
-        </Link>
-      </div>
-
-      <div className="space-y-6 text-sm text-slate-100 leading-relaxed font-medium">
-        <section className="p-6 sm:p-7 rounded-3xl bg-[#11382d]/90 border border-[#1e5646] space-y-3 shadow-xl">
-          <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
-            <Scale className="w-5 h-5 text-[#34d399]" />
-            1. Acceptance of CAQM Regulatory Terms
-          </h2>
-          <p className="text-slate-200">
-            By accessing or operating AirIndx / Saans, schools and administrative personnel agree to adhere to the Commission for Air Quality Management (CAQM) Graded Response Action Plan (GRAP) guidelines and relevant Directorate of Education (DoE) Delhi circulars.
-          </p>
-        </section>
-
-        <section className="p-6 sm:p-7 rounded-3xl bg-[#11382d]/90 border border-[#1e5646] space-y-3 shadow-xl">
-          <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-[#34d399]" />
-            2. Deterministic Human-in-the-Loop Authority
-          </h2>
-          <p className="text-slate-200">
-            The deterministic engine computes mathematically optimal schedule swaps and indoor allocations. However, final operational decisions and parent advisory dispatches are exclusively executed by human school leadership (Principal or Vice-Principal).
-          </p>
-        </section>
-
-        <section className="p-6 sm:p-7 rounded-3xl bg-[#11382d]/90 border border-[#1e5646] space-y-3 shadow-xl">
-          <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-[#fbbf24]" />
-            3. WebCrypto SHA-256 Ledger Verifiability
-          </h2>
-          <p className="text-slate-200">
-            Any alteration to the underlying audit chain triggers instantaneous hash mismatches on the public verification portal. The cryptographic ledger constitutes legally verifiable proof of institutional compliance.
-          </p>
-        </section>
-
-        <section className="p-6 sm:p-7 rounded-3xl bg-[#11382d]/90 border border-[#1e5646] space-y-3 shadow-xl">
-          <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
-            <FileText className="w-5 h-5 text-[#34d399]" />
-            4. Limitation of Operational Liability
-          </h2>
-          <p className="text-slate-200">
-            AirIndx synthesizes official CAAQMS monitoring observations and Open-Meteo CAMS forecast feeds. Schools remain responsible for local on-campus building ventilation and campus-specific air purifier maintenance.
-          </p>
-        </section>
-      </div>
-    </div>
+        ))}
+      </dl>
+      <p className="mt-8 text-[15px] text-ink-soft">
+        The code is MIT licensed. See also <Link href="/privacy" className="prose-link">privacy</Link>.
+      </p>
+    </article>
   );
 }

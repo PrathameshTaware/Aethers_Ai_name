@@ -227,3 +227,19 @@ infra/.lambda_src/
 
 # Local deploy secrets (generated admin key for GET /decisions)
 infra/deploy.secrets
+
+# Next.js local secrets (SAANS_ADMIN_KEY)
+.env.local
+
+# Next.js / Node
+node_modules/
+.next/
+*.tsbuildinfo
+.deepeval/
+
+# The Python template above ignores lib/; the frontend's lib/ is source code.
+!/lib/
+!/lib/**
+
+# Local archive of the pre-redesign prototype (its files remain in main's history)
+legacy-frontend/

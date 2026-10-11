@@ -1,17 +1,10 @@
 {
-  "name": "Saans - Air Quality School Day Planner",
+  "name": "Saans: the bad-air school day, re-planned and proven",
   "short_name": "Saans",
-  "description": "Automated GRAP air-safety school day planner & cryptographic proof system",
-  "start_url": "/dashboard",
+  "description": "Reads the GRAP order, re-plans the school day, and proves it.",
+  "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
-  "orientation": "portrait",
-  "icons": [
-    {
-      "src": "/favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    }
-  ]
+  "background_color": "#f6f1e7",
+  "theme_color": "#f6f1e7",
+  "icons": [{ "src": "/favicon.ico", "sizes": "64x64 32x32 24x24 16x16", "type": "image/x-icon" }]
 }

@@ -20,11 +20,29 @@ from services.audit.store import append_audit
 from services.common.http import ApiError, guarded, is_http_event, json_body, respond
 from services.notify.drafting import generate_parent_broadcast_package
 from services.planner.handler import normalise_stage
+from services.workflow.decision_store import decision_key
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 LAMBDA_RESERVE_S = 5
+STORED_NOTICE_FIELDS = ("audience", "language", "notice_text", "whatsapp_click_to_share_url", "fallback_used",
+                        "model_id", "template_id", "prompt_sha256", "text_sha256")
+
+
+def _store_notices(table, decision_id: str, package: Dict[str, Any]) -> None:
+    """
+    Keeps the drafted text on the decision so the principal's Brief (GET /decisions, admin key) can show
+    and share it. The audit row is the record; this copy is a convenience, so a failure here is logged
+    and never fails a run whose notices were already drafted and audited.
+    """
+    notices = {k: {f: package[k].get(f) for f in STORED_NOTICE_FIELDS} for k in ("english", "hindi", "teacher")}
+    try:
+        table.update_item(Key=decision_key(decision_id), UpdateExpression="SET notices_json = :n",
+                          ConditionExpression="attribute_exists(PK)",
+                          ExpressionAttributeValues={":n": json.dumps(notices, ensure_ascii=False)})
+    except Exception:
+        logger.exception("Could not store drafted notices on decision %s", decision_id)
 
 
 def _summary(package: Dict[str, Any]):
@@ -62,6 +80,7 @@ def notify_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                        {"decision_id": decision_id, "approval": event.get("approval"), "notices": notices,
                         "facts_given_to_writer": package["english"]["facts"]},
                        idempotency_key=f"{event['execution']}#NOTICES_DRAFTED" if event.get("execution") else None)
+    _store_notices(table, decision_id, package)
     logger.info("Notices drafted for %s (fallback used: %s)", decision_id,
                 [n["fallback_used"] for n in notices])
     return {"status": "drafted", "notices": notices, "broadcast_package": package, "audit_seq": row["seq"]}

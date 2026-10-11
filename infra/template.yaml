@@ -348,6 +348,34 @@ Resources:
             Enabled: true
             Input: '{"tenant_id": "TENANT#demo"}'  # stage comes from the tenant record
 
+  # 12. HTTP run trigger (admin key): same idempotent start as the Trigger Lambda, for demos without a CLI
+  RunsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .lambda_src/
+      Handler: services.workflow.runs.runs_handler
+      Description: POST /runs - starts SaansWorkflow idempotently for one tenant/date/session
+      Environment:
+        Variables:
+          ADMIN_API_KEY: !Ref AdminApiKey
+          STATE_MACHINE_ARN: !Ref SaansWorkflow
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref SaansTable
+        - StepFunctionsExecutionPolicy:
+            StateMachineName: !GetAtt SaansWorkflow.Name
+        - Statement:
+            - Effect: Allow
+              Action:
+                - states:DescribeExecution
+              Resource: !Sub "arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:execution:${SaansWorkflow.Name}:*"
+      Events:
+        RunsApi:
+          Type: Api
+          Properties:
+            Path: /runs
+            Method: post
+
 Outputs:
   StateMachineArn:
     Description: SaansWorkflow ARN
