@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ShieldCheck, Percent, Activity, Key, TrendingDown } from 'lucide-react';
+import { ShieldCheck, Percent, Activity, Key, TrendingDown, CheckCircle2, Flame, Sparkles } from 'lucide-react';
 import { getStageColor } from '@/lib/utils';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
@@ -26,38 +26,38 @@ export function KPICards({
     {
       title: 'Curriculum PE Preserved',
       value: `${peMinutesPreserved}%`,
-      subtitle: 'Physical education curriculum maintained',
+      subtitle: 'Physical education curriculum 100% maintained',
       icon: Percent,
-      color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-      badge: 'Active Schedule',
-      badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+      color: 'bg-[#061a14] text-[#34d399] border-[#1e5646]',
+      badge: 'Active Eco Schedule',
+      badgeBg: 'bg-[#061a14] text-[#34d399] border-[#1e5646]'
     },
     {
       title: 'Exposure Mitigation',
       value: `${liveReduction}%`,
-      subtitle: 'PM2.5 reduction via indoor swaps',
+      subtitle: 'PM2.5 reduction via clean room swaps',
       icon: TrendingDown,
-      color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+      color: 'bg-[#061a14] text-[#34d399] border-[#1e5646]',
       badge: 'Calculated Reduction',
-      badgeBg: 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+      badgeBg: 'bg-[#061a14] text-[#34d399] border-[#1e5646]'
     },
     {
       title: 'Active GRAP Stage',
       value: `Stage ${liveStage}`,
-      subtitle: liveStage >= 3 ? 'Outdoor sports suspended' : 'Advisory Mode',
+      subtitle: liveStage >= 3 ? 'Outdoor sports suspended' : 'Diurnal Advisory Mode',
       icon: Activity,
-      color: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+      color: 'bg-[#061a14] text-[#fbbf24] border-[#1e5646]',
       badge: `Order r-01${liveStage + 4}`,
-      badgeBg: getStageColor(liveStage)
+      badgeBg: 'bg-[#061a14] text-[#fbbf24] border-[#1e5646]'
     },
     {
       title: 'Audit Block Head',
       value: auditHead,
       subtitle: 'WebCrypto SHA-256 ledger hash',
       icon: Key,
-      color: 'bg-slate-700/50 text-slate-300 border-slate-600',
+      color: 'bg-[#061a14] text-slate-300 border-[#1e5646]',
       badge: 'SHA-256 Validated',
-      badgeBg: 'bg-slate-800 text-slate-300 border-slate-700'
+      badgeBg: 'bg-[#061a14] text-[#34d399] border-[#1e5646]'
     }
   ];
 
@@ -68,23 +68,23 @@ export function KPICards({
         return (
           <div
             key={card.title}
-            className="glass-card p-5 relative"
+            className="p-5 rounded-2xl bg-[#11382d]/90 border border-[#1e5646] shadow-xl relative backdrop-blur-md group hover:border-[#10b981]/60 transition-all duration-300"
           >
             <div className="flex items-start justify-between mb-3">
-              <div className={`w-9 h-9 rounded-lg border ${card.color} flex items-center justify-center`}>
+              <div className={`w-9 h-9 rounded-xl border ${card.color} flex items-center justify-center shadow-sm`}>
                 <Icon className="w-4 h-4" />
               </div>
-              <span className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${card.badgeBg}`}>
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${card.badgeBg}`}>
                 {card.badge}
               </span>
             </div>
 
             <div>
-              <div className="text-2xl font-bold text-white font-mono tracking-tight mb-1">
+              <div className="text-2xl font-black text-white font-mono tracking-tight mb-1 drop-shadow-sm">
                 {card.value}
               </div>
-              <div className="text-xs font-semibold text-slate-200">{card.title}</div>
-              <p className="text-[11px] text-slate-400 mt-0.5">{card.subtitle}</p>
+              <div className="text-xs font-bold text-slate-200">{card.title}</div>
+              <p className="text-[11px] text-slate-300 mt-0.5 font-medium">{card.subtitle}</p>
             </div>
           </div>
         );

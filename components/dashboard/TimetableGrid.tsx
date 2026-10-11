@@ -2,7 +2,7 @@
 
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Move, ArrowRightLeft, CalendarCheck, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Move, ArrowRightLeft, CalendarCheck, ShieldCheck, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { TimetableEntry } from '@/types/dashboard';
 import { useDashboardStore } from '@/store/dashboardStore';
@@ -32,8 +32,8 @@ export function TimetableGrid({ schedule, onApprove }: TimetableGridProps) {
 
     try {
       confetti({
-        particleCount: 60,
-        spread: 60,
+        particleCount: 70,
+        spread: 65,
         origin: { y: 0.6 }
       });
     } catch {
@@ -44,101 +44,101 @@ export function TimetableGrid({ schedule, onApprove }: TimetableGridProps) {
   const getStatusBadge = (classification: string) => {
     switch (classification) {
       case 'BANNED':
-        return 'bg-rose-500/10 text-rose-300 border-rose-500/30';
+        return 'bg-[#061a14] text-rose-300 border-rose-500/60 shadow-[0_0_10px_rgba(244,63,94,0.3)] font-bold';
       case 'ADVISORY':
-        return 'bg-amber-500/10 text-amber-300 border-amber-500/30';
+        return 'bg-[#061a14] text-[#fbbf24] border-[#f59e0b]/60 shadow-[0_0_10px_rgba(245,158,11,0.25)] font-bold';
       case 'ALLOWED':
-        return 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30';
+        return 'bg-[#061a14] text-[#34d399] border-[#10b981]/60 shadow-[0_0_10px_rgba(16,185,129,0.25)] font-bold';
       default:
-        return 'bg-slate-500/10 text-slate-300 border-slate-500/30';
+        return 'bg-[#061a14] text-slate-300 border-[#1e5646] font-bold';
     }
   };
 
   return (
-    <div className="glass-card p-6 border-slate-800 space-y-6">
+    <div className="p-6 sm:p-8 rounded-3xl bg-[#11382d]/90 border border-[#1e5646] shadow-2xl space-y-6 backdrop-blur-md">
       {/* Section Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="p-1.5 rounded bg-blue-500/20 text-blue-400">
+            <div className="p-2 rounded-full bg-[#061a14] text-[#34d399] border border-[#1e5646]">
               <CalendarCheck className="w-4 h-4" />
             </div>
-            <h2 className="text-lg font-bold text-white tracking-tight">
-              Timetable Schedule Optimization
+            <h2 className="text-xl font-extrabold text-white tracking-tight">
+              Timetable Schedule Optimization 📅
             </h2>
           </div>
-          <p className="text-slate-300 text-xs">
+          <p className="text-slate-200 text-xs font-medium">
             GRAP Stage III Directive suspends outdoor activities. Re-order slots or approve Plan A / B strategy.
           </p>
         </div>
 
-        {/* Action Approval Buttons */}
-        <div className="flex flex-wrap gap-2">
+        {/* Action Approval Buttons in Solar Gold & Ecological Emerald */}
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={() => handleApprovalSubmit('A')}
-            className={`btn-success text-xs py-2 px-3 ${
-              isApproved && approvedPlan === 'A' ? 'ring-2 ring-emerald-400' : ''
+            className={`btn-solar-pill text-xs py-2 px-4 cursor-pointer ${
+              isApproved && approvedPlan === 'A' ? 'ring-2 ring-white shadow-[0_0_20px_rgba(245,158,11,0.8)]' : ''
             }`}
           >
-            <ArrowRightLeft className="w-3.5 h-3.5" />
-            <span>Approve Plan A (Swaps)</span>
+            <ArrowRightLeft className="w-3.5 h-3.5 text-slate-950 font-bold" />
+            <span>Approve Plan A (Swaps) ✨</span>
           </button>
 
           <button
             onClick={() => handleApprovalSubmit('B')}
-            className={`btn-teal text-xs py-2 px-3 ${
-              isApproved && approvedPlan === 'B' ? 'ring-2 ring-teal-400' : ''
+            className={`btn-emerald-pill text-xs py-2 px-4 cursor-pointer ${
+              isApproved && approvedPlan === 'B' ? 'ring-2 ring-[#fbbf24] shadow-[0_0_25px_rgba(16,185,129,0.8)]' : ''
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Approve Plan B (Indoor)</span>
+            <span>Approve Plan B (Indoor) 🛡️</span>
           </button>
         </div>
       </div>
 
       {/* Plan Strategy Selection Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div
           onClick={() => setSelectedPlan('A')}
-          className={`p-4 rounded-lg cursor-pointer border transition-colors ${
+          className={`p-5 rounded-2xl cursor-pointer border transition-all duration-300 ${
             selectedPlan === 'A'
-              ? 'bg-slate-900 border-emerald-500'
-              : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+              ? 'bg-[#09261d] border-[#f59e0b] shadow-[0_0_20px_rgba(245,158,11,0.3)] scale-[1.01]'
+              : 'bg-[#09261d]/70 border-[#1e5646] hover:border-[#fb923c]/50'
           }`}
         >
-          <div className="flex items-center justify-between mb-1.5">
-            <h3 className="font-bold text-white text-sm flex items-center gap-2">
-              <span>Plan A: Clean Air Time Swaps</span>
-              {selectedPlan === 'A' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
+              <span>Plan A: Clean Air Diurnal Slot Swaps</span>
+              {selectedPlan === 'A' && <CheckCircle2 className="w-4 h-4 text-[#fbbf24]" />}
             </h3>
-            <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 font-mono border border-emerald-500/20">
-              82% Exposure Reduction
+            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#061a14] text-[#fbbf24] font-mono font-bold border border-[#f59e0b]/40">
+              82% Exposure Cut
             </span>
           </div>
-          <p className="text-xs text-slate-300 leading-relaxed">
-            Re-align outdoor sports slots to afternoon periods (P7/P8) when forecasted PM2.5 levels subside.
+          <p className="text-xs text-slate-200 leading-relaxed font-medium">
+            Re-align outdoor sports slots to afternoon periods (P7/P8) when forecasted PM2.5 levels subside naturally.
           </p>
         </div>
 
         <div
           onClick={() => setSelectedPlan('B')}
-          className={`p-4 rounded-lg cursor-pointer border transition-colors ${
+          className={`p-5 rounded-2xl cursor-pointer border transition-all duration-300 ${
             selectedPlan === 'B'
-              ? 'bg-slate-900 border-teal-500'
-              : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+              ? 'bg-[#09261d] border-[#10b981] shadow-[0_0_20px_rgba(16,185,129,0.35)] scale-[1.01]'
+              : 'bg-[#09261d]/70 border-[#1e5646] hover:border-[#34d399]/50'
           }`}
         >
-          <div className="flex items-center justify-between mb-1.5">
-            <h3 className="font-bold text-white text-sm flex items-center gap-2">
-              <span>Plan B: Indoor Wellness Sessions</span>
-              {selectedPlan === 'B' && <CheckCircle2 className="w-4 h-4 text-teal-400" />}
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
+              <span>Plan B: HEPA Indoor Wellness Sessions</span>
+              {selectedPlan === 'B' && <CheckCircle2 className="w-4 h-4 text-[#34d399]" />}
             </h3>
-            <span className="text-[11px] px-2 py-0.5 rounded bg-teal-500/10 text-teal-300 font-mono border border-teal-500/20">
+            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#061a14] text-[#34d399] font-mono font-bold border border-[#10b981]/40">
               100% PE Preserved
             </span>
           </div>
-          <p className="text-xs text-slate-300 leading-relaxed">
-            Convert outdoor physical education to indoor air-filtered sports (Chess, Table Tennis, Yoga, Ergometrics).
+          <p className="text-xs text-slate-200 leading-relaxed font-medium">
+            Convert outdoor physical education to indoor air-filtered activities (Chess, Table Tennis, Yoga, Ergometrics).
           </p>
         </div>
       </div>
@@ -146,11 +146,11 @@ export function TimetableGrid({ schedule, onApprove }: TimetableGridProps) {
       {/* Approval Confirmation Alert */}
       <AnimatePresence>
         {isApproved && (
-          <div className="p-4 rounded-lg bg-emerald-950/40 border border-emerald-500/40 flex items-center gap-3 text-emerald-200 text-xs">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <div className="p-4 rounded-2xl bg-[#061a14] border border-[#10b981] flex items-center gap-3 text-white text-xs shadow-lg">
+            <CheckCircle2 className="w-5 h-5 text-[#34d399] shrink-0" />
             <div>
-              <span className="font-bold text-white">Plan {approvedPlan} Approved & Digitally Signed</span>
-              <p className="text-[11px] text-emerald-300/90 mt-0.5">
+              <span className="font-extrabold text-white">Plan {approvedPlan} Approved & Digitally Signed</span>
+              <p className="text-[11px] text-[#34d399] mt-0.5 font-medium">
                 Principal signature digest registered into SHA-256 audit chain log. Parent advisories dispatched.
               </p>
             </div>
@@ -158,8 +158,8 @@ export function TimetableGrid({ schedule, onApprove }: TimetableGridProps) {
         )}
       </AnimatePresence>
 
-      {/* Draggable Timetable Table */}
-      <div className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-900/80">
+      {/* Draggable Timetable Table in Deep Forest Palette */}
+      <div className="overflow-x-auto rounded-2xl border border-[#1e5646] bg-[#09261d]/90 shadow-xl">
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="timetable-droppable">
             {(provided) => (
@@ -168,18 +168,18 @@ export function TimetableGrid({ schedule, onApprove }: TimetableGridProps) {
                 {...provided.droppableProps}
                 className="w-full text-left text-xs"
               >
-                <thead className="bg-slate-950 text-slate-300 border-b border-slate-800 font-semibold">
+                <thead className="bg-[#061a14] text-slate-200 border-b border-[#1e5646] font-bold">
                   <tr>
-                    <th className="p-3 w-8 text-center"></th>
-                    <th className="p-3">Class</th>
-                    <th className="p-3">Period & Time</th>
-                    <th className="p-3">Original Activity</th>
-                    <th className="p-3">Forecast PM2.5</th>
-                    <th className="p-3">Order Classification</th>
-                    <th className="p-3">Optimized Action</th>
+                    <th className="p-3.5 w-8 text-center"></th>
+                    <th className="p-3.5">Class</th>
+                    <th className="p-3.5">Period & Time</th>
+                    <th className="p-3.5">Original Activity</th>
+                    <th className="p-3.5">Forecast PM2.5</th>
+                    <th className="p-3.5">Order Classification</th>
+                    <th className="p-3.5">Optimized Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/80">
+                <tbody className="divide-y divide-[#1e5646]/80">
                   {currentSchedule.map((item, index) => (
                     <Draggable key={item.id} draggableId={item.id} index={index}>
                       {(dragProvided, dragSnapshot) => (
@@ -187,37 +187,39 @@ export function TimetableGrid({ schedule, onApprove }: TimetableGridProps) {
                           ref={dragProvided.innerRef}
                           {...dragProvided.draggableProps}
                           className={`transition-colors ${
-                            dragSnapshot.isDragging ? 'bg-slate-800 border-y border-blue-500/40' : 'hover:bg-slate-800/40'
+                            dragSnapshot.isDragging ? 'bg-[#11382d] border-y border-[#34d399]' : 'hover:bg-[#11382d]/60'
                           }`}
                         >
-                          <td className="p-3 text-center" {...dragProvided.dragHandleProps}>
-                            <Move className="w-3.5 h-3.5 text-slate-500 hover:text-slate-300 cursor-grab mx-auto" />
+                          <td className="p-3.5 text-center" {...dragProvided.dragHandleProps}>
+                            <Move className="w-3.5 h-3.5 text-slate-400 hover:text-white cursor-grab mx-auto" />
                           </td>
-                          <td className="p-3 font-bold text-white">{item.class}</td>
-                          <td className="p-3 text-slate-300">
-                            <div className="font-semibold text-slate-200">{item.period}</div>
-                            <div className="text-[11px] text-slate-400 font-mono">{item.time}</div>
+                          <td className="p-3.5 font-extrabold text-white text-sm">{item.class}</td>
+                          <td className="p-3.5 text-slate-200">
+                            <div className="font-bold text-white">{item.period}</div>
+                            <div className="text-[11px] text-slate-300 font-mono font-medium">{item.time}</div>
                           </td>
-                          <td className="p-3 text-slate-300">
-                            <div>{item.originalActivity}</div>
-                            <div className="text-[11px] text-slate-400">{item.teacher}</div>
+                          <td className="p-3.5 text-slate-200">
+                            <div className="font-semibold text-white">{item.originalActivity}</div>
+                            <div className="text-[11px] text-slate-300 font-medium">{item.teacher}</div>
                           </td>
-                          <td className="p-3 font-mono">
-                            <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                              item.forecastPM25 > 400 ? 'bg-rose-500/15 text-rose-300' : 'bg-amber-500/15 text-amber-300'
+                          <td className="p-3.5 font-mono">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black border ${
+                              item.forecastPM25 > 400 
+                                ? 'bg-[#061a14] text-rose-300 border-rose-500/50 shadow-[0_0_8px_rgba(244,63,94,0.3)]' 
+                                : 'bg-[#061a14] text-[#fbbf24] border-[#f59e0b]/50 shadow-[0_0_8px_rgba(245,158,11,0.25)]'
                             }`}>
                               {item.forecastPM25} µg/m³
                             </span>
                           </td>
-                          <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${getStatusBadge(item.orderClassification)}`}>
+                          <td className="p-3.5">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[11px] border ${getStatusBadge(item.orderClassification)}`}>
                               {item.orderClassification}
                             </span>
                           </td>
-                          <td className="p-3 text-slate-200">
-                            <div className="font-medium text-slate-100">{item.optimizedAction}</div>
+                          <td className="p-3.5 text-slate-100">
+                            <div className="font-bold text-white">{item.optimizedAction}</div>
                             {item.venue && (
-                              <div className="text-[11px] text-slate-400 font-mono mt-0.5">Venue: {item.venue}</div>
+                              <div className="text-[11px] text-[#34d399] font-mono font-semibold mt-0.5">Venue: {item.venue}</div>
                             )}
                           </td>
                         </tr>

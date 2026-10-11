@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#1e1b4b" />
+      <stop offset="100%" stop-color="#070b19" />
+    </linearGradient>
+    <linearGradient id="glowRing" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6" />
+      <stop offset="50%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#bgGrad)" stroke="#312e81" stroke-width="2"/>
+  <circle cx="32" cy="32" r="22" stroke="url(#glowRing)" stroke-width="2" stroke-dasharray="8 4" opacity="0.75" />
+  <path d="M18 32 C18 24 26 20 34 20 C42 20 46 25 46 32 C46 39 38 44 28 44 C20 44 18 38 18 32 Z" 
+        stroke="url(#glowRing)" stroke-width="3" stroke-linecap="round" fill="none" filter="url(#glow)"/>
+  <circle cx="32" cy="32" r="4" fill="#38bdf8" />
+  <circle cx="42" cy="24" r="2" fill="#8b5cf6" />
+  <circle cx="22" cy="40" r="2" fill="#10b981" />
+</svg>
