@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # Recorded in the audit chain next to the prompt hash, so a notice traces to the exact template and settings.
 # Bump the version whenever build_prompt's wording changes.
-PROMPT_TEMPLATE_ID = "notice-prompt-v1"
+PROMPT_TEMPLATE_ID = "notice-prompt-v2"
 INFERENCE_CONFIG = {"maxTokens": 300, "temperature": 0.3, "topP": 0.9}
 DEFAULT_PACKAGE_BUDGET_S = DEFAULT_BUDGET_S
 
@@ -116,14 +116,20 @@ ROMAN_STAGES = {"I": "1", "II": "2", "III": "3", "IV": "4"}
 
 
 def _fact_lines(stage: str, plan: Dict[str, Any]) -> List[str]:
-    """The facts given to the model, one per line. The output check allows only the numbers in these."""
+    """The facts given to the model, one per line. The output check allows only the numbers in these.
+
+    A change that did not happen is left out rather than stated as zero: given "0 periods were moved", a live model
+    wrote that all activities were moved. What is not in the prompt cannot be misstated, and a "0" in the reply is
+    then an invented number.
+    """
     facts = plan_facts(plan)
-    return [
-        f"GRAP Stage {stage} is in force in Delhi-NCR.",
-        f"{facts['periods_moved']} outdoor activity periods were moved to times with lower forecast pollution.",
-        f"{facts['periods_replaced_indoor']} outdoor activity periods were replaced by indoor physical sessions.",
-        f"{facts['pe_minutes_kept_active']} of {facts['pe_minutes_scheduled']} scheduled PE minutes stay physically active.",
-    ]
+    lines = [f"GRAP Stage {stage} is in force in Delhi-NCR."]
+    if facts["periods_moved"]:
+        lines.append(f"{facts['periods_moved']} outdoor activity periods were moved to times with lower forecast pollution.")
+    if facts["periods_replaced_indoor"]:
+        lines.append(f"{facts['periods_replaced_indoor']} outdoor activity periods were replaced by indoor physical sessions.")
+    lines.append(f"{facts['pe_minutes_kept_active']} of {facts['pe_minutes_scheduled']} scheduled PE minutes stay physically active.")
+    return lines
 
 
 def build_prompt(audience: str, language: str, stage: str, plan: Dict[str, Any], link: Optional[str]) -> str:
@@ -134,8 +140,8 @@ def build_prompt(audience: str, language: str, stage: str, plan: Dict[str, Any],
         f"Facts (use only these):\n"
         + "".join(f"- {line}\n" for line in _fact_lines(stage, plan))
         + (f"- Anyone can verify this decision at: {link}\n" if link else "")
-        + "\nWrite a concise, factual notice (max 3 sentences). Do not add any other numbers, regulations, "
-        "health claims or links."
+        + "\nWrite a concise, factual notice (max 3 sentences). Describe only the changes listed above, and do not "
+        "mention any other kind of change. Do not add any other numbers, regulations, health claims or links."
         + (" Include the verification link exactly as given." if link else "")
     )
 

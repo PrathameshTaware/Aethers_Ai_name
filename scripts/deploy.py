@@ -23,9 +23,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ENV_FILE = ROOT / "infra" / ".env"
 BUCKET = "aws-sam-cli-managed-default-samclisourcebucket-1vx1tvdtqz7m"
+# Names are matched case-insensitively; the aliases cover common spellings (a Groq key is "gsk_...").
 PARAMS = {"FALLBACK_MODEL_API_KEY": "FallbackModelApiKey", "GROQ_API_KEY": "FallbackModelApiKey",
+          "GROK_API_KEY": "FallbackModelApiKey",
           "TWILIO_ACCOUNT_SID": "TwilioAccountSid", "TWILIO_AUTH_TOKEN": "TwilioAuthToken",
-          "TWILIO_WHATSAPP_FROM": "TwilioWhatsAppFrom", "DEMO_WHATSAPP_TO": "DemoWhatsAppTo"}
+          "TWILIO_TOKEN": "TwilioAuthToken",
+          "TWILIO_WHATSAPP_FROM": "TwilioWhatsAppFrom", "DEMO_WHATSAPP_TO": "DemoWhatsAppTo",
+          "TWILIO_CONTENT_SID": "TwilioContentSid", "TWILIO_CONTENT_VARIABLES": "TwilioContentVariables",
+          "META_WA_TOKEN": "MetaWaToken", "META_WA_PHONE_NUMBER_ID": "MetaWaPhoneNumberId"}
 
 
 def read_env(path: Path) -> dict:
@@ -48,7 +53,7 @@ def main():
     env = {**os.environ, "AWS_PROFILE": args.profile, "AWS_DEFAULT_REGION": args.region}
 
     values = read_env(ENV_FILE)
-    overrides = {PARAMS[k]: v for k, v in values.items() if k in PARAMS and v}
+    overrides = {PARAMS[k.upper()]: v for k, v in values.items() if k.upper() in PARAMS and v}
     print("Parameters from infra/.env:", ", ".join(sorted(overrides)) or "none")
 
     subprocess.run([sys.executable, str(ROOT / "scripts" / "build_lambda.py")], check=True)

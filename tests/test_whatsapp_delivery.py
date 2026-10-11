@@ -93,6 +93,22 @@ class TestDelivery(unittest.TestCase):
         self.assertEqual(out["delivery"]["sent"], 0)
         self.assertEqual(out["delivery"]["deliveries"][0]["error"], "HTTP400 twilio:63015")
 
+    def test_trial_template_mode_sends_the_template_with_run_values(self):
+        twilio = FakeTwilio()
+        env = {**TWILIO_ENV, "TWILIO_CONTENT_SID": "HX" + "1" * 32,
+               "TWILIO_CONTENT_VARIABLES": '{"1": "{date}", "2": "{receipt_url}"}'}
+        with mock.patch.dict(os.environ, {"PUBLIC_BASE_URL": "https://api.example/Prod"}):
+            out = self.run_notify(twilio, env=env)
+        self.assertEqual(len(twilio.sent), 1)  # one template per phone, not one per language
+        msg = twilio.sent[0]
+        self.assertNotIn("Body", msg)
+        self.assertEqual(msg["ContentSid"], "HX" + "1" * 32)
+        self.assertEqual(json.loads(msg["ContentVariables"]),
+                         {"1": "2026-10-12", "2": "https://api.example/Prod/verify/AbCdEfGh1234"})
+        entry = out["delivery"]["deliveries"][0]
+        self.assertEqual((entry["mode"], entry["content_sid"]), ("template", "HX" + "1" * 32))
+        self.assertNotIn("text_sha256", entry)  # the notice itself was not sent, and the record does not claim it
+
     def test_off_without_configuration(self):
         twilio = FakeTwilio()
         env = {k: "" for k in TWILIO_ENV}
@@ -100,6 +116,68 @@ class TestDelivery(unittest.TestCase):
         self.assertEqual(twilio.sent, [])
         self.assertIsNone(out["delivery"])
         self.assertEqual([r["event"] for r in read_chain(self.table, "TENANT#demo")], ["NOTICES_DRAFTED"])
+
+
+META_ENV = {"META_WA_TOKEN": "test-meta-token", "META_WA_PHONE_NUMBER_ID": "123456789012345",
+            "DEMO_WHATSAPP_TO": f"whatsapp:{PHONE}"}
+
+
+class FakeMeta:
+    def __init__(self, error=None):
+        self.error, self.sent = error, []
+
+    def __call__(self, request, timeout=None):
+        self.sent.append({"url": request.full_url, "auth": request.get_header("Authorization"),
+                          **json.loads(request.data)})
+        if self.error:
+            raise self.error
+        return io.BytesIO(json.dumps({"messages": [{"id": f"wamid.{len(self.sent)}"}]}).encode())
+
+
+@mock_aws
+class TestMetaDelivery(unittest.TestCase):
+
+    def setUp(self):
+        os.environ["TABLE_NAME"] = "SaansStateTable"
+        self.table = make_table()
+        patcher = mock.patch.object(drafting, "_invoke_bedrock", return_value=None)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def run_notify(self, meta, env):
+        with mock.patch.dict(os.environ, env), mock.patch.object(whatsapp.urllib.request, "urlopen", meta):
+            return notify_handler(dict(EVENT), None)
+
+    def test_sends_the_real_notice_text_through_meta(self):
+        meta = FakeMeta()
+        out = self.run_notify(meta, META_ENV)
+        self.assertEqual(len(meta.sent), 2)
+        msg = meta.sent[0]
+        self.assertEqual(msg["url"], "https://graph.facebook.com/123456789012345/messages")
+        self.assertEqual(msg["auth"], "Bearer test-meta-token")
+        self.assertEqual((msg["messaging_product"], msg["type"], msg["to"]), ("whatsapp", "text", PHONE[1:]))
+        pkg = out["broadcast_package"]
+        self.assertEqual([m["text"]["body"] for m in meta.sent], [pkg["english"]["notice_text"], pkg["hindi"]["notice_text"]])
+        self.assertEqual(out["delivery"]["channel"], "whatsapp_meta_cloud_api")
+        self.assertEqual(out["delivery"]["sent"], 2)
+        self.assertEqual(out["delivery"]["deliveries"][0]["provider"], "meta")
+
+    def test_meta_is_preferred_over_twilio(self):
+        meta = FakeMeta()
+        self.run_notify(meta, {**TWILIO_ENV, **META_ENV})
+        self.assertTrue(all("graph.facebook.com" in m["url"] for m in meta.sent))
+
+    def test_outside_the_24_hour_window_is_recorded_not_raised(self):
+        err = urllib.error.HTTPError("https://graph.facebook.com", 400, "bad", {},
+                                     io.BytesIO(b'{"error": {"code": 131047, "message": "Re-engagement message"}}'))
+        out = self.run_notify(FakeMeta(error=err), META_ENV)
+        self.assertEqual(out["status"], "drafted")
+        self.assertEqual(out["delivery"]["deliveries"][0]["error"], "HTTP400 meta:131047")
+
+    def test_pinned_api_version(self):
+        meta = FakeMeta()
+        self.run_notify(meta, {**META_ENV, "META_WA_API_VERSION": "v23.0"})
+        self.assertEqual(meta.sent[0]["url"], "https://graph.facebook.com/v23.0/123456789012345/messages")
 
 
 class TestRecipients(unittest.TestCase):

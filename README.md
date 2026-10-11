@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/AWS-Lambda%20%C2%B7%20Step%20Functions%20%C2%B7%20DynamoDB%20%C2%B7%20Bedrock-orange?logo=amazon-aws&style=flat-square" alt="AWS Lambda, Step Functions, DynamoDB, Bedrock">
   <img src="https://img.shields.io/badge/Python-3.12-blue?logo=python&style=flat-square" alt="Python 3.12">
   <img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js&style=flat-square" alt="Next.js 16">
-  <img src="https://img.shields.io/badge/tests-252%20passing-brightgreen?style=flat-square" alt="252 tests passing">
+  <img src="https://img.shields.io/badge/tests-257%20passing-brightgreen?style=flat-square" alt="257 tests passing">
   <img src="https://img.shields.io/badge/scope-Delhi--NCR%20GRAP%20I%E2%80%93IV-purple?style=flat-square" alt="GRAP Stages I-IV">
   <img src="https://img.shields.io/badge/audit-SHA--256%20hash%20chain-teal?style=flat-square" alt="SHA-256 hash chain">
   <img src="https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square" alt="MIT License">
@@ -240,11 +240,13 @@ version and settings, and `/health` reports `bedrock.usable` separately from the
 
 - **Click-to-share (the real channel).** Every notice comes with a WhatsApp share link. The class teacher taps it and
   sends the verified notice to the class parents' group they already run. Saans stores no parent phone numbers.
-- **Demo delivery (Twilio WhatsApp sandbox).** When the Twilio parameters are set, the approved English and Hindi
-  parent notices are also sent straight to the demo phones the moment the principal approves. Delivery is at most once
-  per run, never fails the run, and is recorded as a `NOTICE_DELIVERED` audit row with each message's ID, status and
-  text hash. Phones appear only as `demo-1`, `demo-2`; no number reaches the chain. The sandbox only reaches phones
-  that have joined it, so this is for demonstrations, not for real parents.
+- **Demo delivery (WhatsApp).** When a WhatsApp provider is configured, the approved English and Hindi parent notices
+  are also sent straight to the demo phones the moment the principal approves. The default is **Meta's WhatsApp Cloud
+  API** with its free test number, which sends the real notice text to verified phones within 24 hours of the phone's
+  last message to it. Twilio is supported too, but a Twilio trial account can only send Twilio's own templates
+  (`TwilioContentSid`). Delivery is at most once per run, never fails the run, and is recorded as a
+  `NOTICE_DELIVERED` audit row with the provider and each message's ID, status and text hash. Phones appear only as
+  `demo-1`, `demo-2`; no number reaches the chain. This is for demonstrations, not for real parents.
 
 **Check a notice you received.** The `/verify/{id}` page has a box where anyone can paste a notice. The browser hashes
 it and finds the matching row, then shows which model or template wrote it and whether code refused a model draft.
@@ -310,7 +312,7 @@ The tests cover planner edge cases, the approval workflow paths through the real
 chain under concurrent writers, the receipt verifier running the browser code under Node, forecast fallback and
 caching, the forecast watch, notice wording and provenance, the notice output check against recorded replies, the
 circular pipeline with scripted model replies, Bedrock-first failover, at-most-once WhatsApp delivery, the template's
-freedom from dependency cycles, and the Lambda bundle importing every handler. 252 tests, all passing.
+freedom from dependency cycles, and the Lambda bundle importing every handler. 257 tests, all passing.
 
 ## Deploy to AWS
 
@@ -342,12 +344,15 @@ python scripts/deploy.py          # builds, packages and deploys; optional secre
 | `infra/.env` name | Stack parameter | Turns on |
 | :--- | :--- | :--- |
 | `FALLBACK_MODEL_API_KEY` (or `GROQ_API_KEY`) | `FallbackModelApiKey` | The labelled fallback model when Bedrock fails |
-| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | `TwilioAccountSid`, `TwilioAuthToken` | Demo WhatsApp delivery |
-| `TWILIO_WHATSAPP_FROM` | `TwilioWhatsAppFrom` | The sandbox sender, e.g. `whatsapp:+14155238886` |
+| `META_WA_TOKEN`, `META_WA_PHONE_NUMBER_ID` | `MetaWaToken`, `MetaWaPhoneNumberId` | Demo WhatsApp delivery through Meta's Cloud API (preferred) |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | `TwilioAccountSid`, `TwilioAuthToken` | Demo WhatsApp delivery through Twilio |
+| `TWILIO_WHATSAPP_FROM` | `TwilioWhatsAppFrom` | The Twilio sender, e.g. `whatsapp:+14155238886` |
+| `TWILIO_CONTENT_SID`, `TWILIO_CONTENT_VARIABLES` | `TwilioContentSid`, `TwilioContentVariables` | Twilio trial accounts: the template to send instead of free text |
 | `DEMO_WHATSAPP_TO` | `DemoWhatsAppTo` | Comma-separated demo phones, e.g. `whatsapp:+91XXXXXXXXXX` |
 
-Each demo phone must first join the Twilio sandbox by sending its join code (shown in the Twilio console under
-Messaging → Try it out → Send a WhatsApp message) to the sandbox number.
+For Meta: create an app at developers.facebook.com, add the WhatsApp product, add your phone as a recipient of the
+test number, and create a permanent token for a system user. Before a demo, send any message from the demo phone to
+the test number to open WhatsApp's 24-hour window.
 
 Start a run from the front end's Today page, with `POST /runs`, or by invoking the Trigger Lambda (its name is the
 `TriggerFunctionName` stack output):
@@ -392,8 +397,8 @@ public/        static assets and labelled API snapshots
 - **The extraction test set is small:** one real circular, one labelled sample and one hostile case.
 - **Ruleset approval uses the admin key**, not the principal's role-bound link that plan approval uses.
 - **The output check reads digits, not number words.** "Six periods" in a model notice is not checked.
-- **Automatic delivery is a demo.** The Twilio sandbox only reaches phones that joined it. Real parents are reached
-  through the class teacher's share link; there is no WhatsApp Business registration.
+- **Automatic delivery is a demo.** It reaches only verified test phones, and free text only within WhatsApp's
+  24-hour window. Real parents are reached through the class teacher's share link; there is no WhatsApp Business registration.
 - **Approvals happen through the brief.** There is no Telegram or SMS approval yet.
 - **No pilot has run** with a real school, and no school or student counts are claimed.
 - **Tamper-evident, not tamper-proof.** The chain shows any edit, but we operate the database.

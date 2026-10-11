@@ -115,7 +115,13 @@ class TestFallbackClient(unittest.TestCase):
         self.assertEqual(req["url"], fallback_model.FALLBACK_URL)
         self.assertEqual(req["headers"]["Authorization"], "Bearer test-fallback-key")
         self.assertEqual(req["body"]["messages"][0], {"role": "system", "content": "sys"})
-        self.assertEqual(req["body"]["max_tokens"], drafting.INFERENCE_CONFIG["maxTokens"])
+        # gpt-oss is a reasoning model: short reasoning, and headroom so it cannot eat the answer's tokens.
+        self.assertEqual(req["body"]["model"], fallback_model.FALLBACK_MODEL_ID)
+        if "gpt-oss" in fallback_model.FALLBACK_MODEL_ID:
+            self.assertEqual(req["body"]["reasoning_effort"], "low")
+            self.assertEqual(req["body"]["max_tokens"], drafting.INFERENCE_CONFIG["maxTokens"] + 1000)
+        else:
+            self.assertEqual(req["body"]["max_tokens"], drafting.INFERENCE_CONFIG["maxTokens"])
         self.assertLessEqual(req["timeout"], 8)
 
     @with_key

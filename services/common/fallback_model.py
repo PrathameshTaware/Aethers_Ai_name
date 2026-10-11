@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-FALLBACK_MODEL_ID = os.environ.get("FALLBACK_MODEL_ID", "llama-3.3-70b-versatile")
+FALLBACK_MODEL_ID = os.environ.get("FALLBACK_MODEL_ID", "openai/gpt-oss-120b")
 FALLBACK_URL = os.environ.get("FALLBACK_MODEL_URL", "https://api.groq.com/openai/v1/chat/completions")
 FALLBACK_PROVIDER = "groq"
 MIN_BUDGET_S = 3
@@ -51,6 +51,10 @@ def complete(prompt: str, inference_config: Dict[str, Any], deadline: float, rea
             "max_tokens": inference_config.get("maxTokens", 300)}
     if "topP" in inference_config:
         body["top_p"] = inference_config["topP"]
+    if "gpt-oss" in FALLBACK_MODEL_ID:
+        # A reasoning model: keep reasoning short so replies stay fast and it does not eat the token budget.
+        body["reasoning_effort"] = "low"
+        body["max_tokens"] = body["max_tokens"] + 1000
     request = urllib.request.Request(FALLBACK_URL, data=json.dumps(body).encode("utf-8"), method="POST", headers={
         "Authorization": f"Bearer {key}", "Content-Type": "application/json",
         "User-Agent": "saans/1.0"})  # the default Python agent is refused by the provider's edge

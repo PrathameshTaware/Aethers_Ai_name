@@ -70,7 +70,7 @@ def _deadline(context: Any, reserve_s: float = LAMBDA_RESERVE_S) -> Optional[flo
 
 
 def _deliver(table, tenant_id: str, decision_id: str, execution: Optional[str], package: Dict[str, Any],
-             context: Any) -> Optional[Dict[str, Any]]:
+             context: Any, stage: str = "") -> Optional[Dict[str, Any]]:
     """
     Demo WhatsApp delivery of the approved parent notices, at most once per execution: Step Functions may retry
     this step, and a parent must never get the same notice twice. A crash after the claim means no message,
@@ -86,8 +86,11 @@ def _deliver(table, tenant_id: str, decision_id: str, execution: Optional[str], 
         logger.info("Notices for %s were already delivered by an earlier attempt", decision_id)
         return None
     deadline = _deadline(context, reserve_s=LAMBDA_RESERVE_S / 2) or time.monotonic() + DELIVERY_RESERVE_S
-    results = whatsapp.deliver(package, deadline)
-    return {"decision_id": decision_id, "channel": whatsapp.CHANNEL, "deliveries": results,
+    # Values a Twilio trial template may carry (template mode); free-text mode sends the notices themselves.
+    values = {"receipt_url": package["english"].get("verify_url") or "", "stage": stage,
+              "date": decision_id.split("#")[2] if decision_id.count("#") >= 3 else ""}
+    results = whatsapp.deliver(package, deadline, values)
+    return {"decision_id": decision_id, "channel": whatsapp.channel(), "deliveries": results,
             "sent": sum(r["status"] not in ("failed", "skipped") for r in results), "attempted": len(results)}
 
 
@@ -114,7 +117,7 @@ def notify_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     logger.info("Notices drafted for %s (fallback used: %s)", decision_id,
                 [n["fallback_used"] for n in notices])
 
-    delivery = _deliver(table, tenant_id, decision_id, event.get("execution"), package, context)
+    delivery = _deliver(table, tenant_id, decision_id, event.get("execution"), package, context, stage)
     if delivery:
         append_audit(table, tenant_id, "workflow:notify", "NOTICE_DELIVERED", delivery,
                      idempotency_key=f"{event['execution']}#NOTICE_DELIVERED" if event.get("execution") else None)

@@ -35,6 +35,23 @@ Parameters:
     NoEcho: true
     Default: ""
     Description: Comma-separated demo phones that joined the sandbox. Never stored or audited.
+  TwilioContentSid:
+    Type: String
+    Default: ""
+    Description: Optional HX... template SID. Twilio trial accounts can only send Twilio's pre-approved templates; set this to use one.
+  TwilioContentVariables:
+    Type: String
+    Default: ""
+    Description: Optional JSON for the template's variables, with {receipt_url}, {date} and {stage} filled in per run.
+  MetaWaToken:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Optional. Meta WhatsApp Cloud API token for demo delivery (used instead of Twilio when set).
+  MetaWaPhoneNumberId:
+    Type: String
+    Default: ""
+    Description: The Meta WhatsApp test number's Phone number ID.
 
 Globals:
   Function:
@@ -280,6 +297,10 @@ Resources:
           TWILIO_AUTH_TOKEN: !Ref TwilioAuthToken
           TWILIO_WHATSAPP_FROM: !Ref TwilioWhatsAppFrom
           DEMO_WHATSAPP_TO: !Ref DemoWhatsAppTo
+          TWILIO_CONTENT_SID: !Ref TwilioContentSid
+          TWILIO_CONTENT_VARIABLES: !Ref TwilioContentVariables
+          META_WA_TOKEN: !Ref MetaWaToken
+          META_WA_PHONE_NUMBER_ID: !Ref MetaWaPhoneNumberId
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref SaansTable
