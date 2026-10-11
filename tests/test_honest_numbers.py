@@ -87,7 +87,8 @@ class TestNotices(unittest.TestCase):
     def test_model_prompt_states_only_plan_facts(self):
         captured = {}
 
-        text = "Dear parents, outdoor PE is replaced by indoor physical sessions today."
+        text = ("Dear parents, outdoor PE is replaced by indoor physical sessions today. "
+                "Verify: https://api.example/Prod/verify/AbCdEfGh1234")
 
         class FakeClient:
             def converse(self, **kw):

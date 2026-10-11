@@ -14,13 +14,30 @@ import hashlib
 import os
 import logging
 import re
+import time
 import urllib.parse
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 
 logger = logging.getLogger(__name__)
 
 BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
 BEDROCK_REGION = os.environ.get("APP_REGION", "ap-south-1")
+
+# Recorded in the audit chain next to the prompt hash, so a notice traces to the exact template and settings.
+# Bump the version whenever build_prompt's wording changes.
+PROMPT_TEMPLATE_ID = "notice-prompt-v1"
+INFERENCE_CONFIG = {"maxTokens": 300, "temperature": 0.3, "topP": 0.9}
+
+# The Lambda times out at 30 s and drafts three notices in a row, so every model call must give up well before
+# that and leave time for the template fallback and the audit write. boto3's default 60 s read timeout did not.
+BEDROCK_CONNECT_TIMEOUT_S = 2
+BEDROCK_READ_TIMEOUT_S = 8
+BEDROCK_MAX_ATTEMPTS = 2  # one retry, and only for transient errors
+MIN_ATTEMPT_BUDGET_S = 3  # not worth starting a call with less time than this left
+DEFAULT_PACKAGE_BUDGET_S = 20
+TRANSIENT_ERRORS = {"ReadTimeoutError", "ConnectTimeoutError", "EndpointConnectionError", "ConnectionClosedError",
+                    "ThrottlingException", "ServiceUnavailableException", "InternalServerException",
+                    "ModelTimeoutException", "ModelNotReadyException"}
 
 
 def sha256_text(text: str) -> str:
@@ -104,53 +121,137 @@ def plan_facts(plan: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def build_prompt(audience: str, language: str, stage: str, plan: Dict[str, Any], link: Optional[str]) -> str:
+ROMAN_STAGES = {"I": "1", "II": "2", "III": "3", "IV": "4"}
+
+
+def _fact_lines(stage: str, plan: Dict[str, Any]) -> List[str]:
+    """The facts given to the model, one per line. The output check allows only the numbers in these."""
     facts = plan_facts(plan)
+    return [
+        f"GRAP Stage {stage} is in force in Delhi-NCR.",
+        f"{facts['periods_moved']} outdoor activity periods were moved to times with lower forecast pollution.",
+        f"{facts['periods_replaced_indoor']} outdoor activity periods were replaced by indoor physical sessions.",
+        f"{facts['pe_minutes_kept_active']} of {facts['pe_minutes_scheduled']} scheduled PE minutes stay physically active.",
+    ]
+
+
+def build_prompt(audience: str, language: str, stage: str, plan: Dict[str, Any], link: Optional[str]) -> str:
     lang_instruction = "in Hindi (Devanagari script)" if language == "hindi" else "in English"
     audience_instruction = "parents of school children" if audience == "parents" else "PE and subject teachers"
     return (
         f"You are drafting an official school safety notice {lang_instruction} for {audience_instruction}.\n\n"
         f"Facts (use only these):\n"
-        f"- GRAP Stage {stage} is in force in Delhi-NCR.\n"
-        f"- {facts['periods_moved']} outdoor activity periods were moved to times with lower forecast pollution.\n"
-        f"- {facts['periods_replaced_indoor']} outdoor activity periods were replaced by indoor physical sessions.\n"
-        f"- {facts['pe_minutes_kept_active']} of {facts['pe_minutes_scheduled']} scheduled PE minutes stay physically active.\n"
+        + "".join(f"- {line}\n" for line in _fact_lines(stage, plan))
         + (f"- Anyone can verify this decision at: {link}\n" if link else "")
         + "\nWrite a concise, factual notice (max 3 sentences). Do not add any other numbers, regulations, "
         "health claims or links."
+        + (" Include the verification link exactly as given." if link else "")
     )
 
 
-def _invoke_bedrock(prompt: str) -> Optional[str]:
-    """Returns the model's notice text, or None on any failure (triggering the static fallback)."""
+# --- Output check: the model proposes a notice, this code decides whether it may be sent. ---
+
+_URL = re.compile(r"(?i)\b(?:https?://|www\.)\S+")
+_NUMBER = re.compile(r"\d+(?:\.\d+)?")
+_DEVANAGARI_DIGITS = str.maketrans("०१२३४५६७८९", "0123456789")
+MAX_NOTICE_CHARS = 700
+MIN_HINDI_DEVANAGARI_SHARE = 0.7
+MIN_ENGLISH_LATIN_SHARE = 0.9
+
+
+def _numbers(text: str) -> List[str]:
+    """Every number in the text, normalised: Devanagari digits, thousands commas and trailing zeros removed."""
+    text = re.sub(r"(?<=\d),(?=\d{3})", "", text.translate(_DEVANAGARI_DIGITS))
+    return [n.rstrip("0").rstrip(".") if "." in n else (n.lstrip("0") or "0") for n in _NUMBER.findall(text)]
+
+
+def check_notice(text: str, stage: str, plan: Dict[str, Any], link: Optional[str], language: str) -> List[str]:
+    """Reasons to reject a model-written notice; empty when it may be sent.
+
+    Only numbers from the facts the model was given, only our own receipt link (which must be present when
+    there is one), the requested script and a bounded length. Anything else falls back to the static template.
+    """
+    reasons = []
+    urls = [u.rstrip(".,;:!?)'\"।") for u in _URL.findall(text)]
+    if any(u != link for u in urls):
+        reasons.append("foreign_link")
+    if link and link not in urls:
+        reasons.append("missing_receipt_link")
+
+    body = _URL.sub(" ", text)
+    allowed = set(_numbers(" ".join(_fact_lines(stage, plan))))
+    if stage in ROMAN_STAGES:
+        allowed.add(ROMAN_STAGES[stage])  # "Stage 3" for "Stage III"
+    invented = sorted(set(_numbers(body)) - allowed)
+    if invented:
+        reasons.append("invented_number:" + ",".join(invented))
+
+    letters = [c for c in body if c.isalpha()]
+    if letters:
+        devanagari = sum("ऀ" <= c <= "ॿ" for c in letters) / len(letters)
+        latin = sum(c.isascii() for c in letters) / len(letters)
+        if language == "hindi" and devanagari < MIN_HINDI_DEVANAGARI_SHARE:
+            reasons.append("wrong_script")
+        elif language != "hindi" and latin < MIN_ENGLISH_LATIN_SHARE:
+            reasons.append("wrong_script")
+    if len(text) > MAX_NOTICE_CHARS:
+        reasons.append("too_long")
+    return reasons
+
+
+def _error_code(e: Exception) -> str:
+    return (getattr(e, "response", None) or {}).get("Error", {}).get("Code") or type(e).__name__
+
+
+def _invoke_bedrock(prompt: str, deadline: Optional[float] = None) -> Optional[str]:
+    """Returns the model's notice text, or None on any failure (triggering the static fallback).
+
+    Each attempt is capped at BEDROCK_READ_TIMEOUT_S and at the time left before `deadline` (a time.monotonic()
+    value), so a slow model costs seconds, not the whole Lambda.
+    """
     try:
         import boto3
-
-        client = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
-        # Converse has one request shape for Nova, Claude and the other Bedrock text models.
-        response = client.converse(
-            modelId=BEDROCK_MODEL_ID,
-            messages=[{"role": "user", "content": [{"text": prompt}]}],
-            inferenceConfig={"maxTokens": 300, "temperature": 0.3, "topP": 0.9},
-        )
-        content = response.get("output", {}).get("message", {}).get("content") or [{}]
-        generated_text = content[0].get("text", "").strip()
-
-        if generated_text and len(generated_text) > 20:
-            logger.info("Bedrock %s generated notice successfully (len=%d)", BEDROCK_MODEL_ID, len(generated_text))
-            return generated_text
-        else:
-            logger.warning("Bedrock returned empty or too-short response; falling back to static template")
-            return None
-
+        from botocore.config import Config
     except ImportError:
         logger.info("boto3 not available; falling back to static template")
         return None
-    except Exception as e:
-        # Circuit breaker: any Bedrock failure (AccessDenied, throttle, network, credentials)
-        # triggers immediate fallback to static templates with zero interruption
-        logger.warning("Bedrock invocation failed (%s: %s); falling back to static template", type(e).__name__, str(e))
+
+    if deadline is None:
+        deadline = time.monotonic() + DEFAULT_PACKAGE_BUDGET_S
+    for attempt in range(1, BEDROCK_MAX_ATTEMPTS + 1):
+        remaining = deadline - time.monotonic()
+        if remaining < MIN_ATTEMPT_BUDGET_S:
+            logger.warning("No time left for a Bedrock call (%.1fs); falling back to static template", remaining)
+            return None
+        try:
+            client = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION, config=Config(
+                connect_timeout=BEDROCK_CONNECT_TIMEOUT_S,
+                read_timeout=min(BEDROCK_READ_TIMEOUT_S, remaining - BEDROCK_CONNECT_TIMEOUT_S),
+                retries={"total_max_attempts": 1}))  # retries are ours, so they respect the deadline
+            # Converse has one request shape for Nova, Claude and the other Bedrock text models.
+            response = client.converse(
+                modelId=BEDROCK_MODEL_ID,
+                messages=[{"role": "user", "content": [{"text": prompt}]}],
+                inferenceConfig=INFERENCE_CONFIG,
+            )
+        except Exception as e:
+            # Circuit breaker: any Bedrock failure (AccessDenied, throttle, timeout, credentials) falls back to
+            # the static template; only transient ones get one more try.
+            code = _error_code(e)
+            if code in TRANSIENT_ERRORS and attempt < BEDROCK_MAX_ATTEMPTS:
+                logger.warning("Bedrock attempt %d failed (%s); retrying", attempt, code)
+                continue
+            logger.warning("Bedrock invocation failed (%s: %s); falling back to static template", code, str(e))
+            return None
+
+        content = response.get("output", {}).get("message", {}).get("content") or [{}]
+        generated_text = content[0].get("text", "").strip()
+        if generated_text and len(generated_text) > 20:
+            logger.info("Bedrock %s generated notice successfully (len=%d)", BEDROCK_MODEL_ID, len(generated_text))
+            return generated_text
+        logger.warning("Bedrock returned empty or too-short response; falling back to static template")
         return None
+    return None
 
 
 def draft_notice(
@@ -161,13 +262,15 @@ def draft_notice(
     date_str: Optional[str] = None,
     receipt_id: Optional[str] = None,
     public_base_url: Optional[str] = None,
-    force_fallback: bool = False
+    force_fallback: bool = False,
+    deadline: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
     Drafts an official safety notice.
     Attempts Bedrock (Nova Lite) generation first. On any failure — AccessDeniedException,
-    missing credentials, throttle, network error — immediately falls back to pre-validated
-    static bilingual templates with zero downtime (circuit breaker pattern).
+    missing credentials, throttle, timeout — or when the model's text fails check_notice, falls back to
+    pre-validated static bilingual templates (circuit breaker pattern). `deadline` is a time.monotonic()
+    value no model call may run past.
     """
     link = verify_url(receipt_id, public_base_url)
     if date_str is None:  # the decision's own date, e.g. TENANT#demo#2026-10-12#MORN
@@ -178,15 +281,26 @@ def draft_notice(
     notice_text = None
     prompt_sha256 = None
     template_id = None
+    fallback_reason = "forced" if force_fallback else None
+    rejected_reasons: List[str] = []
+    rejected_text_sha256 = None
 
-    # 1. Attempt Bedrock generation (unless force_fallback is set)
+    # 1. Attempt Bedrock generation (unless force_fallback is set); the model proposes, check_notice decides.
     if not force_fallback:
         prompt = build_prompt(audience, language, stage, plan, link)
-        bedrock_result = _invoke_bedrock(prompt)
-        if bedrock_result:
-            notice_text = bedrock_result
-            model_used = f"Bedrock-{BEDROCK_MODEL_ID}"
+        bedrock_result = _invoke_bedrock(prompt, deadline)
+        if bedrock_result is None:
+            fallback_reason = "model_unavailable"
+        else:
             prompt_sha256 = sha256_text(prompt)
+            rejected_reasons = check_notice(bedrock_result, stage, plan, link, language)
+            if rejected_reasons:
+                fallback_reason = "output_rejected"
+                rejected_text_sha256 = sha256_text(bedrock_result)
+                logger.warning("Model notice rejected (%s); falling back to static template", rejected_reasons)
+            else:
+                notice_text = bedrock_result
+                model_used = f"Bedrock-{BEDROCK_MODEL_ID}"
 
     # 2. Static template fallback (circuit breaker)
     facts = plan_facts(plan)
@@ -223,7 +337,13 @@ def draft_notice(
         "fallback_used": fallback_used,
         "model_id": None if fallback_used else BEDROCK_MODEL_ID,
         "template_id": template_id,
+        "fallback_reason": fallback_reason,
+        "rejected_reasons": rejected_reasons,
+        "rejected_text_sha256": rejected_text_sha256,
+        # Set whenever the model replied, so a sent or rejected model text traces to its exact prompt.
         "prompt_sha256": prompt_sha256,
+        "prompt_template_id": PROMPT_TEMPLATE_ID if prompt_sha256 else None,
+        "inference_config": dict(INFERENCE_CONFIG) if prompt_sha256 else None,
         "text_sha256": sha256_text(notice_text),
     }
 
@@ -231,14 +351,23 @@ def draft_notice(
 def generate_parent_broadcast_package(
     plan: Dict[str, Any],
     stage: str = "III",
-    receipt_id: Optional[str] = None
+    receipt_id: Optional[str] = None,
+    deadline: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
     Creates complete bilingual notice package for WhatsApp distribution.
+    All three notices share one deadline, and once the model is unavailable the rest skip it.
     """
-    eng_notice = draft_notice(plan, audience="parents", language="english", stage=stage, receipt_id=receipt_id)
-    hin_notice = draft_notice(plan, audience="parents", language="hindi", stage=stage, receipt_id=receipt_id)
-    teacher_notice = draft_notice(plan, audience="teachers", language="english", stage=stage, receipt_id=receipt_id)
+    if deadline is None:
+        deadline = time.monotonic() + DEFAULT_PACKAGE_BUDGET_S
+    notices = []
+    for audience, language in (("parents", "english"), ("parents", "hindi"), ("teachers", "english")):
+        notice = draft_notice(plan, audience=audience, language=language, stage=stage, receipt_id=receipt_id,
+                              deadline=deadline)
+        if notice["fallback_reason"] == "model_unavailable":
+            deadline = 0.0  # circuit open: don't wait on a model that just failed
+        notices.append(notice)
+    eng_notice, hin_notice, teacher_notice = notices
 
     return {
         "english": eng_notice,

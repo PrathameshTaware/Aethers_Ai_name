@@ -1,0 +1,39 @@
+{
+  "description": "Recorded and hand-written model replies for one plan, with the reasons check_notice must give. {link} is replaced with the plan's receipt link. Plan facts: GRAP Stage III, 0 periods moved, 6 replaced indoor, 240 of 240 PE minutes active.",
+  "plan": {
+    "decision_id": "TENANT#demo#2026-10-12#MORN",
+    "plan_a": [],
+    "plan_b": [{"class": "7A"}, {"class": "7A"}, {"class": "7A"}, {"class": "7A"}, {"class": "7A"}, {"class": "7A"}],
+    "pe_minutes": {"scheduled": 240, "kept_active": 240}
+  },
+  "stage": "III",
+  "link": "https://api.example/Prod/verify/AbCdEfGh1234",
+  "cases": [
+    {"id": "good_english", "language": "english", "expect": [],
+     "text": "Dear Parents, under GRAP Stage III, 6 outdoor PE periods today are replaced by indoor physical sessions, and all 240 scheduled PE minutes stay active. Verify this decision: {link}."},
+    {"id": "good_english_arabic_stage", "language": "english", "expect": [],
+     "text": "Notice to Teachers: GRAP Stage 3 is in force. 6 outdoor periods move to indoor physical sessions; 240 of 240 PE minutes stay active. Verify: {link}"},
+    {"id": "good_hindi", "language": "hindi", "expect": [],
+     "text": "आदरणीय अभिभावक, ग्रैप स्टेज III के तहत आज 6 बाहरी खेल पीरियड इनडोर शारीरिक सत्रों से बदले गए हैं और 240 में से 240 पीई मिनट सक्रिय रहेंगे। इस निर्णय की जाँच करें: {link}।"},
+    {"id": "good_hindi_devanagari_digits", "language": "hindi", "expect": [],
+     "text": "आदरणीय अभिभावक, आज ६ बाहरी पीरियड इनडोर शारीरिक सत्रों में बदले गए हैं और २४० में से २४० मिनट सक्रिय रहेंगे। जाँच करें: {link}"},
+    {"id": "invented_aqi", "language": "english", "expect": ["invented_number:450"],
+     "text": "Dear Parents, with AQI at 450, 6 outdoor PE periods today are replaced by indoor physical sessions. Verify this decision: {link}"},
+    {"id": "invented_pm25_level", "language": "english", "expect": ["invented_number:2.5,310"],
+     "text": "Dear Parents, PM2.5 is forecast at 310 today, so 6 outdoor periods are replaced by indoor sessions. Verify: {link}"},
+    {"id": "invented_health_percentage", "language": "english", "expect": ["invented_number:80"],
+     "text": "Dear Parents, indoor sessions cut your child's exposure by 80%. 6 outdoor periods are replaced today. Verify: {link}"},
+    {"id": "foreign_link", "language": "english", "expect": ["foreign_link"],
+     "text": "Dear Parents, 6 outdoor periods are replaced by indoor sessions under GRAP Stage III. Details: https://cpcb.nic.in/grap and {link}"},
+    {"id": "missing_receipt_link", "language": "english", "expect": ["missing_receipt_link"],
+     "text": "Dear Parents, under GRAP Stage III, 6 outdoor PE periods today are replaced by indoor physical sessions."},
+    {"id": "tampered_receipt_link", "language": "english", "expect": ["foreign_link", "missing_receipt_link"],
+     "text": "Dear Parents, 6 outdoor periods are replaced by indoor sessions. Verify: https://api.example/Prod/verify/ZZZZZZZZ9999"},
+    {"id": "hindi_requested_english_returned", "language": "hindi", "expect": ["wrong_script"],
+     "text": "Dear Parents, under GRAP Stage III, 6 outdoor PE periods today are replaced by indoor physical sessions. Verify: {link}"},
+    {"id": "hindi_in_roman_script", "language": "hindi", "expect": ["wrong_script"],
+     "text": "Aadarniya abhibhavak, aaj 6 bahari khel periods indoor satron se badle gaye hain. Jaanch karein: {link}"},
+    {"id": "english_requested_hindi_returned", "language": "english", "expect": ["wrong_script"],
+     "text": "आदरणीय अभिभावक, आज 6 बाहरी पीरियड इनडोर सत्रों में बदले गए हैं। जाँच करें: {link}"}
+  ]
+}

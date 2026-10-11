@@ -11,7 +11,8 @@ Notices are drafted and returned as WhatsApp click-to-share links; nothing is pu
 import json
 import logging
 import os
-from typing import Dict, Any
+import time
+from typing import Dict, Any, Optional
 
 import boto3
 
@@ -23,13 +24,25 @@ from services.planner.handler import normalise_stage
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+LAMBDA_RESERVE_S = 5
+
 
 def _summary(package: Dict[str, Any]):
     """Provenance per notice: which model or template wrote it, from which prompt, and the exact text's digest."""
     return [{"audience": n["audience"], "language": n["language"], "model_used": n["model_used"],
-             "fallback_used": n["fallback_used"], "model_id": n["model_id"], "template_id": n["template_id"],
-             "prompt_sha256": n["prompt_sha256"], "text_sha256": n["text_sha256"]}
+             "fallback_used": n["fallback_used"], "fallback_reason": n["fallback_reason"],
+             "rejected_reasons": n["rejected_reasons"], "rejected_text_sha256": n["rejected_text_sha256"],
+             "model_id": n["model_id"], "template_id": n["template_id"],
+             "prompt_sha256": n["prompt_sha256"], "prompt_template_id": n["prompt_template_id"],
+             "inference_config": n["inference_config"], "text_sha256": n["text_sha256"]}
             for n in (package["english"], package["hindi"], package["teacher"])]
+
+
+def _deadline(context: Any) -> Optional[float]:
+    """Model calls must finish this many seconds before the Lambda's own timeout, leaving room for the audit write."""
+    if context is None or not hasattr(context, "get_remaining_time_in_millis"):
+        return None
+    return time.monotonic() + context.get_remaining_time_in_millis() / 1000 - LAMBDA_RESERVE_S
 
 
 def notify_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -41,7 +54,7 @@ def notify_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         raise ValueError("tenant_id and decision_id are required")
     stage = normalise_stage(event.get("stage", "III"))
     package = generate_parent_broadcast_package(event.get("plan") or {}, stage=stage,
-                                                receipt_id=event.get("receipt_id"))
+                                                receipt_id=event.get("receipt_id"), deadline=_deadline(context))
     notices = _summary(package)
 
     table = boto3.resource("dynamodb").Table(os.environ["TABLE_NAME"])
@@ -64,5 +77,5 @@ def _notify_http(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     plan = body.get("plan") or {}
     if not isinstance(plan, dict):
         raise ApiError(400, "invalid_plan", "'plan' must be an object.")
-    package = generate_parent_broadcast_package(plan, stage=stage)
+    package = generate_parent_broadcast_package(plan, stage=stage, deadline=_deadline(context))
     return respond(200, {"status": "drafted", "broadcast_package": package, "notices": _summary(package)})
