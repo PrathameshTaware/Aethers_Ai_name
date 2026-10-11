@@ -1,0 +1,25 @@
+# AWS Amplify Hosting build for the Next.js front end. Every push to the connected branch rebuilds and redeploys.
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        # Next.js 16 needs Node 20.9 or later; the default build image may be older.
+        - nvm install 22
+        - nvm use 22
+        - npm ci
+    build:
+      commands:
+        # Amplify's server-side (SSR) functions do not see console environment variables at runtime, so the admin key
+        # set in Amplify (Hosting > Environment variables) is written into the build. It is never committed to git.
+        - echo "SAANS_ADMIN_KEY=$SAANS_ADMIN_KEY" >> .env.production
+        - if [ -n "$NEXT_PUBLIC_SAANS_API" ]; then echo "NEXT_PUBLIC_SAANS_API=$NEXT_PUBLIC_SAANS_API" >> .env.production; fi
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - .next/cache/**/*
+      - node_modules/**/*

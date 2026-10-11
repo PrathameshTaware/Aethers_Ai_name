@@ -243,3 +243,6 @@ node_modules/
 
 # Local archive of the pre-redesign prototype (its files remain in main's history)
 legacy-frontend/
+
+# Written only during the Amplify build (amplify.yml); never commit
+.env.production
